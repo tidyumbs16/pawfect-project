@@ -6,6 +6,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { supabaseClient } from "@/lib/supabase-client";
 import { useRouter } from "next/navigation";
 
+export const fetchCache = "force-no-store";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
