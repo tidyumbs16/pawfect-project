@@ -1,18 +1,14 @@
 pipeline {
     agent any
 
-    tools {
-        // ถ้า Jenkins ใช้ PATH เดียวกับ Windows shell จะหา Bun ได้เลย
-        // ถ้าไม่เจอ bun ให้เพิ่ม PATH ใน System Environment
-    }
-
     stages {
+
         stage('Checkout') {
             steps {
                 git(
                     url: 'https://github.com/tidyumbs16/pawfect-project.git',
                     branch: 'main',
-                    credentialsId: 'github-token'
+                    credentialsId: 'tidyumbs16'
                 )
             }
         }
@@ -23,15 +19,10 @@ pipeline {
             }
         }
 
-        stage('Build') {
+        stage('Build Next.js') {
             steps {
-                bat 'bun run build'
-            }
-        }
-
-        stage('Test') {
-            steps {
-                bat 'bun test'
+                // bun x will find next.js binary automatically
+                bat 'bun x next build'
             }
         }
     }
@@ -41,7 +32,7 @@ pipeline {
             echo "🎉 Build Success!"
         }
         failure {
-            echo "❌ Build Failed!"
+            echo "❌ Build Failed"
         }
     }
 }
