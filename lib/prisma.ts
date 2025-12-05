@@ -1,15 +1,13 @@
-import { PrismaClient } from "@prisma/client/edge";
-import { withAccelerate } from "@prisma/extension-accelerate";
+import { PrismaClient } from "@prisma/client";
 
-const globalForPrisma = globalThis as unknown as {
+const globalForPrisma = global as unknown as {
   prisma: PrismaClient | undefined;
 };
 
-// ใช้ Prisma + Accelerate (แนะนำ Next.js 14/16)
 export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient().$extends(withAccelerate());
+  globalForPrisma.prisma ||
+  new PrismaClient({
+    log: ["query", "error", "warn"],
+  });
 
-if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma as unknown as PrismaClient | undefined;
-}
+if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;

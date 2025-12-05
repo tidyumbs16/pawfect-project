@@ -11,7 +11,7 @@
   "dependencies": {
     "@elysiajs/cors": "^1.4.0",
     "@heroicons/react": "^2.2.0",
-    "@prisma/client": "^7.0.1",
+    "@prisma/client": "5",
     "@prisma/extension-accelerate": "^3.0.1",
     "@supabase/ssr": "^0.7.0",
     "@supabase/supabase-js": "^2.86.0",
@@ -23,7 +23,7 @@
     "install": "^0.13.0",
     "lucide-react": "^0.554.0",
     "next": "16.0.3",
-    "prisma": "^7.0.1",
+    "prisma": "5",
     "react": "19.2.0",
     "react-dom": "19.2.0",
     "react-icons": "^5.5.0"
