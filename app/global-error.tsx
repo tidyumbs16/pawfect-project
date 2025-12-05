@@ -1,7 +1,7 @@
 // app/global-error.tsx
 'use client';
 
-// ✅ บรรทัดนี้คือหัวใจสำคัญ ที่จะแก้ Error ครับ
+// ✅ บังคับให้เป็น Dynamic เพื่อแก้ Bug ตอน Build
 export const dynamic = "force-dynamic";
 
 export default function GlobalError({
@@ -14,12 +14,22 @@ export default function GlobalError({
   return (
     <html>
       <body>
-        <div className="flex min-h-screen flex-col items-center justify-center">
-          <h2 className="text-2xl font-bold mb-4">Something went wrong!</h2>
-          <p className="mb-4 text-gray-600">{error.message || "Unknown Error"}</p>
+        <div style={{ padding: 40, textAlign: "center" }}>
+          <h2 style={{ fontSize: "1.5rem", fontWeight: "bold", marginBottom: "1rem" }}>
+            Application Error
+          </h2>
+          <p style={{ marginBottom: "1.5rem", color: "#666" }}>
+            {error?.message || "Something went wrong during rendering."}
+          </p>
           <button
             onClick={() => reset()}
-            className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition"
+            style={{
+              padding: "10px 20px",
+              backgroundColor: "#000",
+              color: "#fff",
+              borderRadius: "5px",
+              cursor: "pointer"
+            }}
           >
             Try again
           </button>
