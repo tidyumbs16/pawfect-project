@@ -11,7 +11,7 @@ import {
 } from '@heroicons/react/24/solid';
 
 // ✅ 1. กำหนด API URL
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 const PawfectHero = () => {
   const [username, setUsername] = useState<string | null>(null);
