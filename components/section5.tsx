@@ -4,7 +4,8 @@ import { Mail, Phone, MessageCircle, Facebook, Smartphone } from 'lucide-react';
 
 const Section5 = () => {
   return (
-    <div className=" text-[#3E5481] relative w-full flex items-center bg-gradient-to-r from-[#FFA94D] from-20% via-[#56DEF3] to-[#BCEAD3] to-90% mt-20">
+    <section id="section5">
+    <div className=" text-[#3E5481] relative w-full flex items-center bg-gradient-to-r from-[#FFA94D] from-20% via-[#56DEF3] to-[#BCEAD3] to-90% mt-50">
       
       <div className="hidden lg:flex absolute bottom-10 left-1/2 transform -translate-x-1/1 z-0 pointer-events-none items-center justify-center w-[450px] h-auto ms-35 ">
           <img 
@@ -69,9 +70,7 @@ const Section5 = () => {
           
           {/* Logo/Brand at bottom left corner */}
           <div className="pt-8">
-              <div className="w-10 h-10 bg-black rounded-full flex items-center justify-center text-white font-bold text-xs">
-                  N
-              </div>
+      
           </div>
         </div>
 
@@ -115,6 +114,7 @@ const Section5 = () => {
         </div>
       </div>
     </div>
+    </section>
   );
 };
 

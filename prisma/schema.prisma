@@ -1,0 +1,88 @@
+// prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model profiles {
+  id         String   @id @db.Uuid
+  username   String?
+  avatar_url String?
+  bio        String?
+  gender     String?
+  birthdate  DateTime? @db.Date
+  created_at DateTime  @default(now()) @db.Timestamptz
+
+  posts      posts[]
+  comments   comments[]
+  likes      likes[]
+  favorites  favorites[]
+
+  // Supabase auth.users relation (manual mapping)
+  auth_user  auth_users? @relation(fields: [id], references: [id])
+}
+
+model auth_users {
+  id         String   @id @db.Uuid
+  email      String?
+  created_at DateTime? @db.Timestamptz
+
+  profile profiles?
+}
+
+model posts {
+  id         String     @id @db.Uuid
+  user_id    String     @db.Uuid
+  content    String?
+  image_url  String?
+  created_at DateTime   @default(now()) @db.Timestamptz
+
+  profiles   profiles   @relation(fields: [user_id], references: [id])
+  comments   comments[]
+  likes      likes[]
+}
+
+model comments {
+  id         String   @id @db.Uuid
+  post_id    String   @db.Uuid
+  user_id    String   @db.Uuid
+  content    String?
+  created_at DateTime @default(now()) @db.Timestamptz
+
+  posts      posts    @relation(fields: [post_id], references: [id])
+  profiles   profiles @relation(fields: [user_id], references: [id])
+}
+
+model likes {
+  id         Int      @id @default(autoincrement())
+  post_id    String   @db.Uuid
+  user_id    String   @db.Uuid
+  created_at DateTime @default(now())
+
+  posts      posts    @relation(fields: [post_id], references: [id])
+  profiles   profiles @relation(fields: [user_id], references: [id])
+}
+
+model favorites {
+  id         Int      @id @default(autoincrement())
+  user_id    String   @db.Uuid
+  name_id    Int
+  created_at DateTime @default(now())
+
+  profiles   profiles @relation(fields: [user_id], references: [id])
+  pet_names  pet_names @relation(fields: [name_id], references: [id])
+}
+
+model pet_names {
+  id         Int       @id @default(autoincrement())
+  name       String?
+  meaning    String?
+  type       String?
+  popularity Int?
+  created_at DateTime?
+  
+  favorites  favorites[]
+}

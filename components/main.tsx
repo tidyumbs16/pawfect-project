@@ -10,79 +10,77 @@ import {
   UserIcon,
 } from '@heroicons/react/24/solid';
 
+// ✅ 1. กำหนด API URL
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
 const PawfectHero = () => {
   const [username, setUsername] = useState<string | null>(null);
+  const supabase = supabaseClient(); 
 
-  // ===========================
-  // โหลดข้อมูล User จาก Supabase
-  // ===========================
+
   useEffect(() => {
     async function loadUser() {
-      const { data: sessionData } = await supabaseClient().auth.getSession();
+      // 1. ดึง Token จาก LocalStorage
+      const { data: { session } } = await supabase.auth.getSession();
 
-      if (!sessionData.session) return;
+      if (!session) return;
 
-      const userId = sessionData.session.user.id;
+      try {
+        // 2. ยิงไปหา Bun Backend แทนการ Query เอง
+        const res = await fetch(`${API_URL}/api/auth/session`, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${session.access_token}` // แนบ Token ไปด้วย
+          }
+        });
 
-      const { data: profile } = await supabaseClient()
-        .from("profiles")
-        .select("username")
-        .eq("id", userId)
-        .single();
+        const json = await res.json();
 
-      if (profile) {
-        setUsername(profile.username);
+        // 3. ถ้าสำเร็จ ให้ setUsername จากข้อมูลที่ Backend ส่งมา
+        if (json.ok) {
+          setUsername(json.user.username);
+        }
+      } catch (error) {
+        console.error("Failed to fetch user data:", error);
       }
     }
 
     loadUser();
-  }, []);
+  }, [supabase]);
 
   // ===========================
-  // ฟังก์ชัน Logout
+  // ฟังก์ชัน Logout (เผื่อได้ใช้ในอนาคต)
   // ===========================
   const handleLogout = async () => {
-    await supabaseClient().auth.signOut();
+    await supabase.auth.signOut();
     setUsername(null);
+    window.location.reload(); // รีเฟรชหน้าจอเพื่อเคลียร์สถานะ
   };
 
   return (
-    
-   <div className="relative w-full h-[650px] md:h-[906px]    ">
+    <div className="relative w-full h-[650px] md:h-[906px]">
+      <Image
+        src="/Frame 54.png"
+        alt="Hero"
+        fill
+        priority
+        className="
+          object-cover 
+          object-center 
+          w-auto 
+          h-auto 
+          -z-10
+          absolute 
+          inset-0 
+          scale-[1.26]
+          /* เพิ่มการขยายภาพ */
+        "
+      />
+      
+     
 
-  <Image
-    src="/Frame 54.png"
-    alt="Hero"
-    fill
-    priority
-    className="
-      object-cover 
-      object-center 
-      w-auto 
-      h-auto 
-     -z-10
-      absolute 
-      inset-0 
-      scale-[1.26]
-         /* เพิ่มการขยายภาพ */
-    "
-  />
-
-  
-    
     </div>
-
-
-
-
-
-
- 
-
-
-);
-
-
+  );
 };
 
 export default PawfectHero;

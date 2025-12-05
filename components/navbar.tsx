@@ -4,9 +4,10 @@ import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabaseClient } from "@/lib/supabase-client";
 
-const supabase = supabaseClient();
+// ✅ 1. กำหนด URL Backend
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
-// ICONS
+// ICONS (เหมือนเดิม)
 const IconHome = () => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20" className="w-5 h-5">
     <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
@@ -26,29 +27,62 @@ const IconProfile = () => (
 );
 
 export default function Navbar() {
+  const supabase = supabaseClient();
   const [username, setUsername] = useState<string | null>(null);
   const [showPopup, setShowPopup] = useState(false);
 
-  // 🔥 โหลด session จาก API
- useEffect(() => {
-  async function loadUser() {
-    const res = await fetch("/api/auth/session", {
-      credentials: "include",
-    });
+  // 🔥 โหลด session จาก API ของ Bun
+  useEffect(() => {
+    async function loadUser() {
+      // 1. ดึง Token จาก Local Storage ของ Browser ก่อน
+      const { data: { session } } = await supabase.auth.getSession();
 
-    const json = await res.json();
-    if (json.ok) setUsername(json.user.username);
-  }
+      if (!session) return; // ถ้าไม่มี session ก็ไม่ต้องยิงไปถาม Backend
 
-  loadUser();
-}, []);
+      // 2. ยิงไปหา Bun Backend พร้อมแนบ Token ไปยืนยันตัวตน
+      try {
+        const res = await fetch(`${API_URL}/api/auth/session`, {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${session.access_token}` // ✅ สำคัญมาก! ต้องแนบ Token
+          }
+        });
+
+        const json = await res.json();
+        if (json.ok) setUsername(json.user.username);
+        
+      } catch (error) {
+        console.error("Failed to load user session:", error);
+      }
+    }
+
+    loadUser();
+  }, [supabase]); // ใส่ dependency เพื่อความชัวร์
 
 
 
-  // 🔥 Logout → API
+  // 🔥 Logout Logic
   const confirmLogout = async () => {
-    await fetch("/api/auth/logout", { method: "POST" });
+    try {
+      // 1. ลบ Session ใน Browser (Supabase) **สำคัญที่สุด**
+      await supabase.auth.signOut();
+
+      // 2. บอก Backend ว่า Logout (Optional แต่ทำไว้ก็ดี)
+      // เราแนบ token เก่าไปบอก backend ให้รับรู้ (ถ้า backend มี logic จัดการ)
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+         await fetch(`${API_URL}/api/auth/logout`, { 
+            method: "POST",
+            headers: { "Authorization": `Bearer ${session.access_token}` }
+         });
+      }
+
+    } catch (error) {
+      console.error("Logout error", error);
+    }
+
     setShowPopup(false);
+    // 3. รีเฟรชหน้าเว็บเพื่อเคลียร์ State ทุกอย่าง
     window.location.href = "/";
   };
 
@@ -66,7 +100,7 @@ export default function Navbar() {
             <ul className="flex items-center gap-6 ml-10">
               <li><Link href="/" className="flex items-center gap-1.5 hover:text-gray-200"><IconHome />Home</Link></li>
               <li><Link href="/about" className="hover:text-gray-200">About Us</Link></li>
-              <li><Link href="/contact" className="hover:text-gray-200">Contact Us</Link></li>
+              <li><Link href="#section5" className="hover:text-gray-200">Contact Us</Link></li>
             </ul>
           </div>
 
@@ -96,7 +130,7 @@ export default function Navbar() {
               </button>
             ) : (
               <Link
-                href="/auth/login"
+                href="/auth/login" // ✅ ตรวจสอบว่าหน้า Login คุณอยู่ที่ Path นี้จริงไหม
                 className="flex items-center gap-1.5 bg-white/25 text-white py-1.5 px-6 rounded-xl hover:bg-white/40 transition"
               >
                 Sign In

@@ -6,8 +6,12 @@ import { AnimatePresence, motion } from "framer-motion";
 import { supabaseClient } from "@/lib/supabase-client";
 import { useRouter } from "next/navigation";
 
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+
 const AuthForm = () => {
   const router = useRouter();
+  const supabase = supabaseClient(); 
 
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
@@ -16,10 +20,10 @@ const AuthForm = () => {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    supabaseClient().auth.getSession().then(({ data }) => {
+    supabase.auth.getSession().then(({ data }) => {
       if (data.session) router.push('/');
     });
-  }, []);
+  }, [supabase, router]);
 
   const toggleMode = () => {
     setIsLogin(!isLogin);
@@ -29,45 +33,63 @@ const AuthForm = () => {
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setLoading(true);
+    e.preventDefault();
+    setLoading(true);
 
-  if (isLogin) {
-  const res = await fetch("/api/auth/login", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password }),
-  });
+    try {
+      if (isLogin) {
+        // ✅ 1. ยิงไปที่ Bun Backend
+        console.log("Jumping to:", `${API_URL}/api/auth/login`);
+        const res = await fetch(`${API_URL}/api/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password }),
+        });
 
-  const data = await res.json();
-  setLoading(false);
+        const data = await res.json();
+        setLoading(false);
 
-  if (!data.ok) {
-    alert(data.message);
-    return;
-  }
+        if (!data.ok) {
+          alert(data.message || "Login failed");
+          return;
+        }
 
-  router.push("/");
-  return;
-}
+        // ✅ 2. สำคัญมาก: รับ Session จาก Backend มาฝังลง Browser
+        // (เพื่อให้ Supabase ฝั่ง Client รู้ว่าเรา Login แล้ว)
+        if (data.session) {
+          const { error } = await supabase.auth.setSession(data.session);
+          if (error) throw error;
+        }
 
+        router.push("/");
+        return;
+      }
 
-  // --- REGISTER ---
-  const res = await fetch("/api/auth/register", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ email, password, username: name }),
-  });
+      // --- REGISTER ---
+      // ✅ 3. ยิงไปที่ Bun Backend
+      const res = await fetch(`${API_URL}/api/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, password, username: name }),
+      });
 
-  const data = await res.json();
-  setLoading(false);
+      const data = await res.json();
+      setLoading(false);
 
-  if (!data.success) return alert("สมัครสมาชิกไม่สำเร็จ: " + data.message);
+      if (!data.success) {
+         alert("สมัครสมาชิกไม่สำเร็จ: " + (data.message || "Unknown error"));
+         return;
+      }
 
-  alert("สมัครสำเร็จ! โปรดเข้าสู่ระบบ");
-  setIsLogin(true);
-};
+      alert("สมัครสำเร็จ! โปรดเข้าสู่ระบบ");
+      setIsLogin(true);
 
+    } catch (err) {
+      console.error(err);
+      setLoading(false);
+      alert("เกิดข้อผิดพลาดในการเชื่อมต่อกับ Server");
+    }
+  };
 
   return (
     <div className="flex items-center justify-center mt-10 ">

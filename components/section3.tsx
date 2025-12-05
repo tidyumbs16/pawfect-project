@@ -66,11 +66,11 @@ export default function App() {
         <div className="container mx-auto max-w-7xl relative z-10">
           
           {/* ส่วนหัวข้อ */}
-          <div className="text-center mb-10 md:mb-16 space-y-16 ">
+          <div className="text-center mb-10 md:mb-16 space-y-16 -mt-6">
             <h2 className="text-2xl md:text-5xl font-semibold text-white drop-shadow-lg tracking-wide">
              ”สิ่งที่ <span className="text-white">Pawfect Name</span> มอบให้คุณ”
             </h2>
-            <p className="mx-auto max-w-4xl text-white/95 text-base md:text-lg leading-relaxed font-light drop-shadow-sm px-4">
+            <p className="mx-auto max-w-4xl text-white/95 text-base md:text-lg  font-light drop-shadow-sm px-4 ">
               เราเข้าใจดีว่าการตั้งชื่อสัตว์เลี้ยงเป็นช่วงเวลาที่สำคัญและสนุกสนาน เราจึงได้รวบรวม ฐานข้อมูลชื่อที่ดีที่สุด <br/>
               พร้อมเครื่องมือสุดล้ำที่จะช่วยให้การตัดสินใจของคุณง่ายขึ้น ชื่อคือจุดเริ่มต้นของมิตรภาพอันยาวนาน <br/>
               และเราพร้อมเป็นผู้ช่วยให้คุณค้นพบชื่อที่สมบูรณ์แบบที่สุดสำหรับเพื่อนรักสี่ขาของคุณ
@@ -104,7 +104,7 @@ export default function App() {
                   <img 
                       src="/dogsec3.png"
                       alt="Happy Beagle Dog" 
-                      className="relative z-10 h-[145%] w-auto max-w-[50vw] md:max-w-none object-contain drop-shadow-2xl mb-[-15%]"
+                      className="relative z-10 h-[130%] w-auto max-w-[50vw] md:max-w-none object-contain drop-shadow-2xl mb-[-12%]"
                       style={{ 
                         filter: 'drop-shadow(0 10px 20px rgba(0,0,0,0.3))'
                       }}
