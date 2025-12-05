@@ -1,14 +1,16 @@
 'use client';
 
+export const dynamic = "force-dynamic";
+export const fetchCache = "force-no-store";
+export const revalidate = 0;
+
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { AnimatePresence, motion } from "framer-motion";
 import { supabaseClient } from "@/lib/supabase-client";
 import { useRouter } from "next/navigation";
 
-export const fetchCache = "force-no-store";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080'
 
 const AuthForm = () => {
   const router = useRouter();
