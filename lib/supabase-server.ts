@@ -1,8 +1,7 @@
 // lib/supabase-server.ts
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
-import { parse } from "cookie"; 
+import { parse } from "cookie";
 
-// เราต้องรับ req เข้ามา เพื่อให้รู้ว่าใครเรียกมา
 export function supabaseServer(req: Request) {
   const cookieHeader = req.headers.get("Cookie") ?? "";
   const cookies = parse(cookieHeader);
@@ -15,13 +14,8 @@ export function supabaseServer(req: Request) {
         get(name: string) {
           return cookies[name];
         },
-        
-        set(name: string, value: string, options: CookieOptions) {
-    
-        },
-        remove(name: string, options: CookieOptions) {
-        
-        },
+        set(name: string, value: string, options: CookieOptions) {},
+        remove(name: string, options: CookieOptions) {},
       },
     }
   );

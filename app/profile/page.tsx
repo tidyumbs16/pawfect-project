@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
-import { supabaseClient } from "@/lib/supabase-client";
+import {  supabase   } from "@/lib/supabase-client";
 import EditPanel from "@/components/EditPanel";
+import Link from "next/link";
+
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
 interface Profile {
   id: string;
@@ -16,7 +19,7 @@ interface Profile {
 }
 
 export default function ProfilePage() {
-  const supabase = supabaseClient();
+ 
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [showEdit, setShowEdit] = useState(false);
@@ -85,9 +88,15 @@ export default function ProfilePage() {
         </div>
 
         {/* Diary Button */}
-        <button className="w-[300px] h-[50px] mt-20 py-2 bg-linear-to-b from-[#F6A6A8] via-[#FF8F92] to-[#FA787C] text-white rounded-lg flex items-center justify-center ">
-          📔 Diary
-        </button>
+      
+        <Link
+      href="/diary"
+      className="w-[300px] h-[50px] mt-20 py-2 bg-[linear-gradient(to_bottom,#F6A6A8,#FF8F92,#FA787C)]
+                 text-white rounded-lg flex items-center justify-center cursor-pointer text-lg"
+    >
+      📔 Diary
+    </Link>
+
       </div>
 
       {/* RIGHT — EDIT PANEL */}

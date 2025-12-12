@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { supabaseClient } from "@/lib/supabase-client";
+import { supabase} from "@/lib/supabase-client";
 
 // ตรวจสอบให้แน่ใจว่า Interface Profile มี email
 interface Profile {
@@ -20,7 +20,7 @@ interface EditPanelProps {
 }
 
 export default function EditPanel({ profile, setShowEdit }: EditPanelProps) {
-  const supabase = supabaseClient();
+ 
 
   const [formData, setFormData] = useState({
     username: profile.username,

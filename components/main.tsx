@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import { useEffect, useState } from "react";
-import { supabaseClient } from "@/lib/supabase-client";
+import { supabase } from "@/lib/supabase-client";
 
 import {
   HeartIcon,
@@ -15,7 +15,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 const PawfectHero = () => {
   const [username, setUsername] = useState<string | null>(null);
-  const supabase = supabaseClient(); 
+
 
 
   useEffect(() => {

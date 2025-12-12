@@ -2,13 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { supabaseClient } from "@/lib/supabase-client";
+import { supabase } from "@/lib/supabase-client";
 
 export default function ProtectedClient({ children }: { children: React.ReactNode }) {
   const router = useRouter();
-  const supabase = supabaseClient();
-  const [loading, setLoading] = useState(true); 
 
+  const [loading, setLoading] = useState(true); 
   useEffect(() => {
     async function check() {
   

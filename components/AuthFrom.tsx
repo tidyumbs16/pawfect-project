@@ -4,14 +4,14 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { AnimatePresence, motion } from "framer-motion";
-import { supabaseClient } from "@/lib/supabase-client";
+import { supabase  } from "@/lib/supabase-client";
 import { useRouter } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
 
 const AuthForm = () => {
   const router = useRouter();
-  const supabase = supabaseClient(); 
+
 
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');

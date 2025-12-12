@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { supabaseClient } from "@/lib/supabase-client";
+import { supabase} from "@/lib/supabase-client";
 
 // ✅ 1. กำหนด URL Backend
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -27,7 +27,7 @@ const IconProfile = () => (
 );
 
 export default function Navbar() {
-  const supabase = supabaseClient();
+
   const [username, setUsername] = useState<string | null>(null);
   const [showPopup, setShowPopup] = useState(false);
 

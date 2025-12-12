@@ -1,88 +1,93 @@
-// prisma/schema.prisma
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["multiSchema"]
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
+  schemas  = ["public"]
 }
 
 model profiles {
-  id         String   @id @db.Uuid
-  username   String?
+  id         String      @id @db.Uuid
+  username   String
   avatar_url String?
   bio        String?
+  created_at DateTime?   @default(now()) @db.Timestamptz(6)
   gender     String?
-  birthdate  DateTime? @db.Date
-  created_at DateTime  @default(now()) @db.Timestamptz
-
-  posts      posts[]
-  comments   comments[]
-  likes      likes[]
+  birthdate  DateTime?   @db.Date
   favorites  favorites[]
 
-  // Supabase auth.users relation (manual mapping)
-  auth_user  auth_users? @relation(fields: [id], references: [id])
+  @@map("profiles")
+  @@schema("public")
 }
 
-model auth_users {
-  id         String   @id @db.Uuid
-  email      String?
-  created_at DateTime? @db.Timestamptz
+model Pet {
+  id           String         @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  createdAt    DateTime?      @default(now()) @map("created_at") @db.Timestamptz(6)
+  owner_id     String         @db.Uuid
+  name         String
+  image        String?        @map("image_url")
+  updatedAt    DateTime?      @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  appointments appointments[]
+  diaries      Diary[]
 
-  profile profiles?
+  @@map("pets")
+  @@schema("public")
 }
 
-model posts {
-  id         String     @id @db.Uuid
-  user_id    String     @db.Uuid
+model Diary {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  created_at DateTime  @default(now()) @db.Timestamptz(6)
+  pet_id     String    @db.Uuid
+  title      String
   content    String?
-  image_url  String?
-  created_at DateTime   @default(now()) @db.Timestamptz
+  image_urls String[]
+  log_date   DateTime? @default(dbgenerated("CURRENT_DATE")) @db.Date
+  pet        Pet       @relation(fields: [pet_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  profiles   profiles   @relation(fields: [user_id], references: [id])
-  comments   comments[]
-  likes      likes[]
-}
-
-model comments {
-  id         String   @id @db.Uuid
-  post_id    String   @db.Uuid
-  user_id    String   @db.Uuid
-  content    String?
-  created_at DateTime @default(now()) @db.Timestamptz
-
-  posts      posts    @relation(fields: [post_id], references: [id])
-  profiles   profiles @relation(fields: [user_id], references: [id])
-}
-
-model likes {
-  id         Int      @id @default(autoincrement())
-  post_id    String   @db.Uuid
-  user_id    String   @db.Uuid
-  created_at DateTime @default(now())
-
-  posts      posts    @relation(fields: [post_id], references: [id])
-  profiles   profiles @relation(fields: [user_id], references: [id])
+  @@map("diaries")
+  @@schema("public")
 }
 
 model favorites {
-  id         Int      @id @default(autoincrement())
-  user_id    String   @db.Uuid
-  name_id    Int
-  created_at DateTime @default(now())
+  id         BigInt     @id @default(autoincrement())
+  user_id    String?    @db.Uuid
+  name_id    BigInt?
+  created_at DateTime?  @default(now()) @db.Timestamptz(6)
+  pet_names  pet_names? @relation(fields: [name_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  profiles   profiles?  @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  profiles   profiles @relation(fields: [user_id], references: [id])
-  pet_names  pet_names @relation(fields: [name_id], references: [id])
+  @@map("favorites")
+  @@schema("public")
 }
 
 model pet_names {
-  id         Int       @id @default(autoincrement())
-  name       String?
+  id         BigInt      @id @default(autoincrement())
+  name       String
   meaning    String?
-  type       String?
-  popularity Int?
-  created_at DateTime?
-  
+  type       String
+  popularity Int?        @default(0)
+  created_at DateTime?   @default(now()) @db.Timestamptz(6)
   favorites  favorites[]
+
+  @@map("pet_names")
+  @@schema("public")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model appointments {
+  id                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  created_at              DateTime? @default(now()) @db.Timestamptz(6)
+  pet_id                  String    @db.Uuid
+  title                   String
+  description             String?
+  appointment_date        DateTime  @db.Timestamptz(6)
+  is_notification_enabled Boolean?  @default(true)
+  status                  String?   @default("pending")
+  pets                    Pet       @relation(fields: [pet_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@schema("public")
 }
