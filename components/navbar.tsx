@@ -1,13 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { supabase} from "@/lib/supabase-client";
+import { useEffect, useRef, useState } from "react";
+import { supabase } from "@/lib/supabase-client";
+import { Bell } from "lucide-react";
+import NotificationItem from "@/components/NotificationItem";
+import Tab from "@/components/Tab";
+import { useNotifications } from "@/hooks/useNotifications";
 
 // ✅ 1. กำหนด URL Backend
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
-// ICONS (เหมือนเดิม)
+// ICONS
 const IconHome = () => (
   <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20" className="w-5 h-5">
     <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z" />
@@ -27,54 +31,63 @@ const IconProfile = () => (
 );
 
 export default function Navbar() {
-
+  const [userId, setUserId] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
   const [showPopup, setShowPopup] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<"today" | "upcoming" | "past">("today");
+
+  const {
+    notifications,
+    unreadCount,
+    isLoading,
+    error,
+    dismissNotification,
+    refresh,
+    resetUnreadCount,
+  } = useNotifications(userId);
+
+  const ref = useRef<HTMLDivElement>(null);
 
   // 🔥 โหลด session จาก API ของ Bun
   useEffect(() => {
     async function loadUser() {
-      // 1. ดึง Token จาก Local Storage ของ Browser ก่อน
       const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
 
-      if (!session) return; // ถ้าไม่มี session ก็ไม่ต้องยิงไปถาม Backend
-
-      // 2. ยิงไปหา Bun Backend พร้อมแนบ Token ไปยืนยันตัวตน
       try {
         const res = await fetch(`${API_URL}/api/auth/session`, {
           method: "GET",
           headers: {
-            "Authorization": `Bearer ${session.access_token}` // ✅ สำคัญมาก! ต้องแนบ Token
+            "Authorization": `Bearer ${session.access_token}`
           }
         });
 
         const json = await res.json();
-        if (json.ok) setUsername(json.user.username);
-        
+        if (json.ok) {
+          setUsername(json.user.username);
+          setUserId(json.user.id);
+        }
+
       } catch (error) {
         console.error("Failed to load user session:", error);
       }
     }
 
     loadUser();
-  }, [supabase]); // ใส่ dependency เพื่อความชัวร์
-
-
+  }, []); // ✅ แก้แล้ว
 
   // 🔥 Logout Logic
   const confirmLogout = async () => {
     try {
-      // 1. ลบ Session ใน Browser (Supabase) **สำคัญที่สุด**
       await supabase.auth.signOut();
 
-      // 2. บอก Backend ว่า Logout (Optional แต่ทำไว้ก็ดี)
-      // เราแนบ token เก่าไปบอก backend ให้รับรู้ (ถ้า backend มี logic จัดการ)
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
-         await fetch(`${API_URL}/api/auth/logout`, { 
-            method: "POST",
-            headers: { "Authorization": `Bearer ${session.access_token}` }
-         });
+        await fetch(`${API_URL}/api/auth/logout`, {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${session.access_token}` }
+        });
       }
 
     } catch (error) {
@@ -82,15 +95,36 @@ export default function Navbar() {
     }
 
     setShowPopup(false);
-    // 3. รีเฟรชหน้าเว็บเพื่อเคลียร์ State ทุกอย่าง
     window.location.href = "/";
   };
 
   const cancelLogout = () => setShowPopup(false);
 
+  // ปิด dropdown เมื่อคลิกนอก
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, []);
+
+  const currentNotifications = notifications[activeTab];
+
+
+
+  useEffect(() => {
+    if (open && unreadCount > 0 && resetUnreadCount) {
+      // เมื่อ Dropdown ถูกเปิดและมีแจ้งเตือนที่ยังไม่ได้อ่าน
+      resetUnreadCount();
+    }
+  }, [open, unreadCount, resetUnreadCount]);
+
   return (
     <>
-      <nav className="bg-[#F67F00] text-white w-full py-3 px-2 shadow-md ">
+      <nav className="bg-[#F67F00] text-white w-full py-3 px-2 shadow-md">
         <div className="flex items-center justify-between pl-12 pr-12">
 
           {/* LEFT */}
@@ -117,9 +151,93 @@ export default function Navbar() {
               <IconHeart /> Favorites
             </Link>
 
+    
+
             <Link href="/profile" className="flex items-center gap-1.5 hover:text-gray-200">
               <IconProfile /> Profile
             </Link>
+
+              {/* ✅ Notification */}
+            <div className="relative" ref={ref}>
+              <button
+                onClick={() => setOpen(!open)}
+                className="relative flex items-center gap-1.5 hover:text-gray-200"
+              >
+                <Bell size={20} />
+                {/* ✅ Badge แสดงจำนวนการแจ้งเตือน */}
+                {unreadCount > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </span>
+                )}
+              </button>
+
+              {/* Dropdown */}
+              {open && (
+                <div className="absolute right-0 mt-3 w-96 bg-white rounded-2xl shadow-lg border border-gray-100 z-50">
+                  {/* Header */}
+                  <div className="px-4 py-3 border-b font-semibold text-slate-700 flex items-center justify-between">
+                    แจ้งเตือนกิจกรรมนัดหมาย
+                    <div className="flex items-center gap-2">
+                  
+                      
+                    
+                     
+                    </div>
+                  </div>
+
+                  {/* Tabs */}
+                  <div className="flex px-3 py-2 gap-2">
+                    <Tab
+                      label="วันนี้"
+                      active={activeTab === "today"}
+                      onClick={() => setActiveTab("today")}
+                    />
+                    <Tab
+                      label="กำลังมาถึง"
+                      active={activeTab === "upcoming"}
+                      onClick={() => setActiveTab("upcoming")}
+                    />
+                    <Tab
+                      label="ที่ผ่านมา"
+                      active={activeTab === "past"}
+                      onClick={() => setActiveTab("past")}
+                    />
+                  
+                  </div>
+
+
+                  {/* Content */}
+                  <div className="max-h-96 overflow-y-auto px-2">
+                    {isLoading ? (
+                      <div className="py-8 text-center text-gray-400">
+                        กำลังโหลด...
+                      </div>
+                    ) : error ? (
+                      <div className="py-8 text-center text-red-400">
+                        เกิดข้อผิดพลาด: {error}
+                      </div>
+                    ) : currentNotifications.length === 0 ? (
+                      <div className="py-8 text-center text-gray-400">
+                        ไม่มีการแจ้งเตือน
+                      </div>
+                    ) : (
+                      currentNotifications.map((notif) => (
+ <NotificationItem
+ key={notif.id}
+notification={notif}
+onDismiss={dismissNotification}
+              
+                           isPastTab={activeTab === "past"}
+                           isToday={activeTab === "today"}
+                        />
+                      ))
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
 
             {username ? (
               <button
@@ -130,7 +248,7 @@ export default function Navbar() {
               </button>
             ) : (
               <Link
-                href="/auth/login" // ✅ ตรวจสอบว่าหน้า Login คุณอยู่ที่ Path นี้จริงไหม
+                href="/auth/login"
                 className="flex items-center gap-1.5 bg-white/25 text-white py-1.5 px-6 rounded-xl hover:bg-white/40 transition"
               >
                 Sign In
@@ -147,7 +265,7 @@ export default function Navbar() {
           <div className="relative w-[520px] rounded-3xl shadow-xl text-center overflow-hidden bg-white/80 backdrop-blur-xl">
 
             <div className="pt-10 pb-4">
-              <h2 className="text-4xl font-bold text-[#E07502]">“จะไปจริงๆหรอ Meow”</h2>
+              <h2 className="text-4xl font-bold text-[#E07502]">จะไปจริงๆหรอ Meow</h2>
 
               <div className="flex justify-center gap-4 mt-6">
                 <button onClick={cancelLogout} className="px-8 py-3 bg-white text-gray-700 rounded-xl shadow">
@@ -160,7 +278,7 @@ export default function Navbar() {
             </div>
 
             <div className="w-full flex justify-center mt-2">
-              <img src="/catcry.png" className="w-[260px] object-contain translate-y-3" />
+              <img src="/catcry.png" className="w-[260px] object-contain translate-y-3" alt="cat crying" />
             </div>
 
           </div>

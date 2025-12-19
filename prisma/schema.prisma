@@ -19,6 +19,8 @@ model profiles {
   birthdate  DateTime?   @db.Date
   favorites  favorites[]
 
+  dismissed_notifications dismissed_notifications[]
+
   @@map("profiles")
   @@schema("public")
 }
@@ -39,12 +41,12 @@ model Pet {
 
 model Diary {
   id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  created_at DateTime  @default(now()) @db.Timestamptz(6)
   pet_id     String    @db.Uuid
   title      String
   content    String?
   image_urls String[]
-  log_date   DateTime? @default(dbgenerated("CURRENT_DATE")) @db.Date
+  created_at  DateTime @default(now())
+ log_date    DateTime @db.Date      
   pet        Pet       @relation(fields: [pet_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@map("diaries")
@@ -79,15 +81,29 @@ model pet_names {
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model appointments {
-  id                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  created_at              DateTime? @default(now()) @db.Timestamptz(6)
-  pet_id                  String    @db.Uuid
+  id                      String                    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  created_at              DateTime?                 @default(now()) @db.Timestamptz(6)
+  pet_id                  String                    @db.Uuid
   title                   String
   description             String?
-  appointment_date        DateTime  @db.Timestamptz(6)
-  is_notification_enabled Boolean?  @default(true)
-  status                  String?   @default("pending")
-  pets                    Pet       @relation(fields: [pet_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  appointment_date        DateTime                  @db.Timestamptz(6)
+  is_notification_enabled Boolean?                  @default(true)
+  status                  String?                   @default("pending")
+  pets                    Pet                       @relation(fields: [pet_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  dismissed_notifications dismissed_notifications[]
 
+  @@schema("public")
+}
+
+model dismissed_notifications {
+  id             String   @id @default(uuid())
+  user_id        String   @db.Uuid
+  appointment_id String   @db.Uuid
+  dismissed_at   DateTime @default(now())
+is_deleted Boolean @default(false)
+  user        profiles     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  appointment appointments @relation(fields: [appointment_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, appointment_id])
   @@schema("public")
 }

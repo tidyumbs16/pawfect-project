@@ -1,12 +1,23 @@
+// components/ActivityModal.tsx
+
 import { useState } from "react";
 
-export default function ActivityModal({ open, onClose }) {
+// 1. 🟢 กำหนด Type สำหรับ Props
+type ActivityModalProps = {
+  // open ใช้ควบคุมการแสดงผล ซึ่งเป็น boolean
+  open: boolean; 
+  // onClose เป็นฟังก์ชันที่ไม่มี Argument และไม่คืนค่า
+  onClose: () => void; 
+};
+
+// 2. 🟢 ใช้ Type Annotation ในการรับ Props
+export default function ActivityModal({ open, onClose }: ActivityModalProps) {
   if (!open) return null;
 
   return (
     <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
       <div className="bg-white p-6 rounded-xl w-full max-w-md shadow-lg">
-
+        
         {/* Header */}
         <div className="flex justify-between mb-4">
           <h2 className="text-xl font-semibold">เพิ่มกิจกรรม</h2>

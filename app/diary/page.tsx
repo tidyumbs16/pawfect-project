@@ -11,10 +11,13 @@ import {
   Lock,
   ZoomIn,
   Loader2,
+  BookOpen,
+  ImagePlus,
 } from "lucide-react";
 import { supabase  } from "@/lib/supabase-client";
 import { title } from "process";
 import { time } from "framer-motion";
+
 
 
 
@@ -415,7 +418,7 @@ type Appointment = {
   title: string;
   description: string;
   appointment_date: string;
-  status: string;
+ status: "pending" | "completed";
   pet_id: string;
 };
 
@@ -560,8 +563,141 @@ const handleDeleteAppointment = async (appointmentId: string) => {
 };
 
 
+ const [filter, setFilter] = useState<"all" | "completed" | "pending">("all");
+
+ 
 
 
+
+// ✅ function ไดอารี่
+
+type Diary = {
+  id: string
+  title: string
+  content?: string
+  log_date: string
+  image_urls: string[]
+}
+
+
+const [showCreateDiary, setShowCreateDiary] = useState(false)
+const [showDiaryForm, setShowDiaryForm] = useState(false)
+const [content, setContent] = useState("")
+const [logDate, setLogDate] = useState(
+  new Date().toISOString().split("T")[0]
+)
+
+const [images, setImages] = useState<File[]>([])
+const [loading, setLoading] = useState(false)
+
+const handleSaveDiary = async () => {
+  if (!selectedPetId) return alert("ยังไม่ได้เลือกสัตว์เลี้ยง")
+  if (!title.trim()) return alert("กรุณาใส่หัวข้อ")
+  if (!logDate) return alert("กรุณาเลือกวันที่")
+
+  try {
+    // 1. ✨ ไปขอ "บัตรประชาชน" (Token) ของคนที่ล็อกอินอยู่มา
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token; // <--- สร้างตัวแปร token ตรงนี้!
+
+    // เช็คหน่อยว่าล็อกอินอยู่จริงไหม
+    if (!token) {
+      alert("กรุณาล็อกอินก่อนบันทึกข้อมูล");
+      return;
+    }
+
+    const formData = new FormData()
+    formData.append("pet_id", selectedPetId)
+    formData.append("title", title)
+    formData.append("log_date", logDate)
+
+    if (content?.trim()) {
+      formData.append("content", content)
+    }
+
+    images.forEach((file) => {
+      formData.append("images", file)
+    })
+
+    // 2. 🚀 ส่ง Token ไปใน Header เพื่อให้ผ่าน RLS
+    const res = await fetch(`${API_URL}/api/diaries`, {
+      method: "POST",
+      headers: {
+        // ทีนี้คำว่า token จะไม่แดงแล้ว เพราะมึงประกาศไว้ข้างบนแล้ว
+        Authorization: `Bearer ${token}`, 
+      },
+      body: formData,
+    })
+
+    if (!res.ok) {
+      const text = await res.text()
+      console.error(text)
+      throw new Error("create diary failed")
+    }
+
+    const newDiary: Diary = await res.json()
+    setDiaries((prev) => [newDiary, ...prev])
+    setShowDiaryForm(false)
+
+    // reset ค่าในฟอร์ม
+    setTitle("")
+    setContent("")
+    setLogDate("")
+    setImages([])
+
+  } catch (err) {
+    console.error(err)
+    alert("บันทึกไดอารี่ไม่สำเร็จ")
+  }
+}
+
+
+
+
+
+const [diaries, setDiaries] = useState<Diary[]>([])
+useEffect(() => {
+  if (!selectedPetId) return
+
+  const fetchDiaries = async () => {
+    const res = await fetch(`${API_URL}/api/diaries/${selectedPetId}`)
+    const data = await res.json()
+    setDiaries(data)
+  }
+
+  fetchDiaries()
+}, [selectedPetId])
+
+
+
+const handleDelete = async (diaryId: string) => {
+  if (!confirm("มึงแน่ใจนะว่าจะลบไดอารี่นี้?")) return;
+const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+  try {
+    const res = await fetch(`${API_URL}/api/diaries/${diaryId}`, { // แก้ Path ให้ตรงกับ API มึง
+      method: "DELETE",
+      headers: {
+        // ✅ ต้องส่ง Token ไปด้วยเพื่อให้หลังบ้านใช้ลบรูปใน Storage
+        Authorization: `Bearer ${token}`, 
+      },
+    });
+
+    if (res.ok) {
+      // ✅ ลบสำเร็จ ให้ Update UI (เช่น กรองเอาตัวที่ลบออกไป)
+      setDiaries((prev) => prev.filter((d) => d.id !== diaryId));
+      alert("ลบเรียบร้อยแล้วมึง!");
+    } else {
+      const error = await res.json();
+      alert(`ลบไม่สำเร็จ: ${error.message}`);
+    }
+  } catch (err) {
+    console.error("Delete error:", err);
+    alert("เกิดข้อผิดพลาดในการลบ");
+  }
+};
+
+ 
   // UI
   return (
    
@@ -838,49 +974,111 @@ const handleDeleteAppointment = async (appointmentId: string) => {
     (item) => String(item.pet_id) === String(selectedPetId)
   );
   
+const filteredAppointments = filtered.filter((item) => {
+  if (filter === "all") return true;                 // 🔹 All = ทั้งหมด
+  if (filter === "completed") return item.status === "completed"; // ✅ ติ๊กแล้ว
+  if (filter === "pending") return item.status === "pending";     // ⏳ ยังไม่ทำ
+  return true;
+});
+
+const filterLabelMap: Record<typeof filter, string> = {
+  all: "ทั้งหมด",
+  completed: "เสร็จแล้ว",
+  pending: "ใกล้มาถึง",
+};
+
+
+
   // ถ้ายังไม่มีข้อมูลเลย ไม่แสดงอะไร (รวม Filter)
   if (filtered.length === 0) return null;
-// ✅ เพิ่ม function สำหรับอัพเดทสถานะ
-const handleToggleStatus = async (appointmentId: string, currentStatus: string) => {
+
+
+  // ✅ เพิ่ม function สำหรับอัพเดทสถานะ
+const handleToggleStatus = async (
+  appointmentId: string,
+  currentStatus: "pending" | "completed"
+) => {
   try {
-    const newStatus = currentStatus === 'completed' ? 'pending' : 'completed';
-    
-    // เรียก API เพื่ออัพเดทสถานะ (ถ้ามี)
-    const res = await fetch(`${API_URL}/api/appointment/${appointmentId}`, {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ status: newStatus }),
-    });
+    const newStatus =
+      currentStatus === "completed" ? "pending" : "completed";
+
+
+      
+    const res = await fetch(
+      `${API_URL}/api/appointment/${appointmentId}`,
+      {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      }
+    );
 
     if (!res.ok) throw new Error("Failed to update");
 
-    // อัพเดท state ทันที
-    setAppointments((prev) => {
-      const list = Array.isArray(prev) ? prev : [];
-      return list.map((item) =>
-        item.id === appointmentId ? { ...item, status: newStatus } : item
-      );
-    });
-
+    // อัพเดท state
+    setAppointments((prev) =>
+      prev.map((item) =>
+        item.id === appointmentId
+          ? { ...item, status: newStatus }
+          : item
+      )
+    );
   } catch (error) {
     console.error("Error updating status:", error);
     alert("อัพเดทสถานะไม่สำเร็จ");
   }
 };
+
+
+
+
   return (
     <div className="mt-6"> 
       
       {/* ส่วน Filter และ Status */}
-      <div className="flex space-x-2 mb-4">
-          <button className="px-4 py-1.5 rounded-lg text-sm bg-orange-500 text-white">All</button>
-          <button className="px-4 py-1.5 rounded-lg text-sm bg-gray-100 text-gray-700">Completed</button>
-          <button className="px-4 py-1.5 rounded-lg text-sm bg-gray-100 text-gray-700">To Do</button>
-      </div>
-      <div className="text-sm text-slate-500 mb-4">Status Filter Terminology : กำหนด</div>
+     <div className="flex space-x-2 mb-4">
+  <button
+    onClick={() => setFilter("all")}
+    className={`px-4 py-1.5 rounded-lg text-sm ${
+      filter === "all"
+        ? "bg-orange-500 text-white"
+        : "bg-gray-100 text-gray-700"
+    }`}
+  >
+    All
+  </button>
+
+  <button
+    onClick={() => setFilter("completed")}
+    className={`px-4 py-1.5 rounded-lg text-sm ${
+      filter === "completed"
+        ? "bg-orange-500 text-white"
+        : "bg-gray-100 text-gray-700"
+    }`}
+  >
+    Completed
+  </button>
+
+  <button
+    onClick={() => setFilter("pending")}
+    className={`px-4 py-1.5 rounded-lg text-sm ${
+      filter === "pending"
+        ? "bg-orange-500 text-white"
+        : "bg-gray-100 text-gray-700"
+    }`}
+  >
+    To Do
+  </button>
+</div>
+
+<div className="text-sm text-slate-500 mb-4">
+  Status Filter Terminology : {filterLabelMap[filter]}
+</div>
+
       
       {/* Grid Layout สำหรับการ์ดกิจกรรม */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filtered.map((item) => (
+        {filteredAppointments.map((item) => (
           <div
             key={item.id}
             className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100"
@@ -899,9 +1097,18 @@ const handleToggleStatus = async (appointmentId: string, currentStatus: string) 
                       <div className="text-sm text-slate-500">{item.description}</div>
                   </div>
                 </label>
-                <button className="text-gray-400 hover:text-gray-600 transition -mt-1">
-                    &times;
-                </button>
+                <button
+  onClick={async () => {
+    await fetch(`${API_URL}/api/appointment/${item.id}`, {
+      method: "DELETE",
+    });
+    loadAppointments();
+  }}
+  className="text-gray-400 hover:text-red-500 transition -mt-1"
+>
+  &times;
+</button>
+
             </div>
 
             {/* วันที่และเวลา */}
@@ -953,21 +1160,235 @@ const handleToggleStatus = async (appointmentId: string, currentStatus: string) 
 
 
 
+<button
+  onClick={() => setShowDiaryForm(true)}
+  className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center gap-4 hover:shadow-md transition-all active:scale-95 h-32 w-full group"
+>
+  <div className="w-[55px] h-[55px] shrink-0 rounded-full border-3 border-orange-400 flex items-center justify-center text-orange-500">
+    <BookOpen size={24} />
+  </div>
+  <span className="text-slate-600 font-medium">เขียนไดอารี่สัตว์เลี้ยง</span>
+</button>
+
+{showDiaryForm && (
+  <div className="w-full bg-white p-6 rounded-2xl shadow-md border mt-5">
+
+    {/* Header */}
+    <div className="text-center mb-4">
+      <span className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-orange-100 text-orange-500">
+        <BookOpen size={24} />
+      </span>
+      <h3 className="font-semibold text-slate-700 mt-2">
+        เขียนไดอารี่สัตว์เลี้ยง
+      </h3>
+    </div>
+
+    {/* หัวข้อ */}
+    <label className="text-sm text-slate-600 font-medium">หัวข้อ</label>
+    <input
+      className="w-full bg-slate-100 p-3 rounded-xl mt-1"
+      placeholder="เช่น พาเจ้าโบโบ้ไปเที่ยว"
+      value={title}
+      onChange={(e) => setTitle(e.target.value)}
+    />
+
+    {/* เนื้อหา */}
+    <label className="text-sm text-slate-600 font-medium mt-4">รายละเอียด</label>
+    <textarea
+      className="w-full bg-slate-100 p-3 rounded-xl mt-1"
+      rows={4}
+      placeholder="วันนี้เกิดอะไรขึ้นบ้าง..."
+      value={content}
+      onChange={(e) => setContent(e.target.value)}
+    />
+
+    {/* วันที่ (ย้อนหลังได้) */}
+    <label className="text-sm text-slate-600 font-medium mt-4">
+      วันที่ของไดอารี่
+    </label>
+    <input
+      type="date"
+      className="w-full bg-slate-100 p-3 rounded-xl mt-1"
+      value={logDate}
+      onChange={(e) => setLogDate(e.target.value)}
+    />
+
+    {/* อัปโหลดรูป */}
+{/* อัปโหลดรูป */}
+<label className="text-sm text-slate-600 font-medium mt-4 block">
+  รูปภาพ
+</label>
+
+<input
+  id="diary-images"
+  type="file"
+  accept="image/*"
+  multiple
+  className="hidden"
+  onChange={(e) => {
+  const files = e.target.files
+  if (!files) return
+
+  setImages((prev) => [
+    ...prev,
+    ...Array.from(files),
+  ])
+}}
 
 
+/>
+{/* preview รูป */}
+{images.length > 0 && (
+  <div className="grid grid-cols-3 gap-4 mb-4">
+    {images.map((file, index) => (
+      <div
+        key={index}
+        className="relative group rounded-xl overflow-hidden border"
+      >
+        <img
+          src={URL.createObjectURL(file)}
+          alt="preview"
+          className="w-full h-32 object-cover"
+        />
 
-
-        {/* Diary Post */}
+        {/* ปุ่มลบ */}
         <button
-          onClick={() => handleMenuClick("Diary Post")}
-          className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center gap-4 hover:shadow-md transition-all active:scale-95 h-32 w-full group"
+          type="button"
+          onClick={() =>
+            setImages((prev) => prev.filter((_, i) => i !== index))
+          }
+          className="
+            absolute top-2 right-2
+            w-7 h-7 rounded-full
+            bg-white/90 text-gray-500
+            flex items-center justify-center
+            shadow
+            hover:bg-red-500 hover:text-white
+            transition
+          "
         >
-       <div className="w-[55px] h-[55px] shrink-0 rounded-4xl border-3 border-orange-400 flex items-center justify-center text-orange-500">
-
-            <SmilePlus size={24} />
-          </div>
-          <span className="text-slate-600 font-medium">สร้างโพสต์ใหม่ลงใน Diary ของคุณ</span>
+          <X size={14} />
         </button>
+      </div>
+    ))}
+  </div>
+)}
+
+  {/* ปุ่มเพิ่มรูป */}
+<label
+  htmlFor="diary-images"
+  className="
+    mt-2 inline-flex items-center gap-3
+    px-5 py-3
+    border-2 border-orange-400
+    rounded-2xl
+    text-orange-500 font-medium
+    cursor-pointer
+    hover:bg-orange-50
+    transition
+  "
+>
+  <ImagePlus size={22} />
+  เพิ่มรูปภาพ
+</label>
+
+
+
+{/* ปุ่ม action */}
+<div className="flex justify-end gap-3 mt-6">
+  <button
+    type="button"
+    onClick={() => setShowDiaryForm(false)}
+    className="px-5 py-2 rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-100 transition"
+  >
+    ยกเลิก
+  </button>
+
+  <button
+    onClick={handleSaveDiary}
+    className="px-6 py-2 rounded-xl bg-orange-500 text-white hover:bg-orange-600 transition"
+  >
+    บันทึก
+  </button>
+</div>
+  </div>
+)}
+{/* =======================
+  Diary List
+======================= */}
+
+{diaries.map((diary) => (
+  <div
+    key={diary.id}
+    // ✅ 1. เพิ่ม 'relative' เพื่อให้ปุ่มกากบาทอ้างอิงตำแหน่งกับ Card นี้
+    className="relative bg-white rounded-2xl shadow-sm border overflow-hidden hover:shadow-md transition group"
+  >
+    {/* ✅ 2. ปุ่มกากบาท (Delete Button) */}
+    <button
+      onClick={(e) => {
+        e.stopPropagation(); // กันไม่ให้มันไปโดน Event คลิกของ Card (ถ้ามี)
+        handleDelete(diary.id);
+        if (confirm("แน่ใจนะว่าจะลบไดอารี่นี้?")) {
+          // เรียกฟังก์ชันลบที่นี่ เช่น: onDelete(diary.id)
+          console.log("Delete diary:", diary.id);
+        }
+      }}
+      className="absolute top-2 right-2 z-10 bg-white/80 hover:bg-red-500 hover:text-white text-slate-500 p-1.5 rounded-full shadow-sm transition-colors backdrop-blur-sm"
+      title="ลบไดอารี่"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="16"
+        height="16"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+
+    {/* รูปปก (รูปแรก) */}
+    {Array.isArray(diary.image_urls) && diary.image_urls.length > 0 && (
+      <img
+        src={diary.image_urls[0]}
+        alt="diary cover"
+        className="w-full h-40 object-cover"
+      />
+    )}
+
+    {/* เนื้อหา */}
+    <div className="p-4 space-y-1">
+      <p className="text-xs text-orange-500">
+        {new Date(diary.log_date).toLocaleDateString("th-TH", {
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+        })}
+      </p>
+
+      <h4 className="font-semibold text-slate-700">
+        {diary.title}
+      </h4>
+
+      {diary.content && (
+        <p className="text-sm text-slate-500 line-clamp-2">
+          {diary.content}
+        </p>
+      )}
+    </div>
+  </div>
+))}
+     
+     
+     
+     
+     
+     
       </main>
 
       {/* WARNING MODAL */}
@@ -986,6 +1407,35 @@ const handleToggleStatus = async (appointmentId: string, currentStatus: string) 
         </div>
       )}
 
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
+     
       {/* ADD PET MODAL */}
       {showAddPetModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
