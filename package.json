@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@elysiajs/cors": "^1.4.0",
+    "@google/generative-ai": "^0.24.1",
     "@heroicons/react": "^2.2.0",
     "@prisma/client": "5",
     "@prisma/extension-accelerate": "^3.0.1",
@@ -17,6 +18,7 @@
     "@supabase/supabase-js": "^2.86.0",
     "cookie": "^1.1.1",
     "elysia": "^1.4.16",
+    "emoji-picker-react": "^4.16.1",
     "firebase": "^12.6.0",
     "framer-motion": "^12.23.24",
     "heroicons": "^2.2.0",

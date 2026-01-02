@@ -6,11 +6,42 @@ import { v4 as uuidv4 } from "uuid";
 import * as dotenv from 'dotenv';
 import { supabase } from "@/lib/supabase-client";
 import { SupabaseClient } from '@supabase/supabase-js'
+import { GoogleGenerativeAI,Part,Content} from "@google/generative-ai";
 dotenv.config();
+
+interface GeminiPart {
+  text?: string;
+  inlineData?: {
+    mimeType: string;
+    data: string;
+  };
+}
+
+interface GeminiContent {
+  role: "user" | "model";
+  parts: GeminiPart[];
+}
+
+interface GeminiResponse {
+  candidates?: Array<{
+    content: {
+      parts: Array<{ text: string }>;
+    };
+  }>;
+  error?: {
+    code: number;
+    message: string;
+    status: string;
+  };
+}
+
+
+
 
 // --- CONFIGURATION ---
 const RAW_SUPABASE_URL = process.env.SUPABASE_URL;
 const RAW_SUPABASE_KEY = process.env.SUPABASE_SERVICE_KEY;
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 
 if (!RAW_SUPABASE_URL || !RAW_SUPABASE_KEY) {
     // โค้ดนี้จะหยุด Server ทันทีหากไม่มีคีย์
@@ -20,9 +51,33 @@ if (!RAW_SUPABASE_URL || !RAW_SUPABASE_KEY) {
 const SUPABASE_URL = RAW_SUPABASE_URL; 
 const SUPABASE_KEY = RAW_SUPABASE_KEY;
 
+if (!GEMINI_API_KEY) {
+    throw new Error("❌ Fatal: Gemini API Key is missing. Please check .env file.");
+}
+
 console.log("🔍 CHECKING ENV VARS:");
 console.log("URL:", SUPABASE_URL ? "✅ Found" : "❌ Missing");
 console.log("KEY:", SUPABASE_KEY ? "✅ Found" : "❌ Missing");
+console.log("GEMINI:", GEMINI_API_KEY ? "✅ Found" : "❌ Missing");
+
+const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
+
+
+async function listModels() {
+  const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${process.env.GEMINI_API_KEY}`);
+  const data = await response.json();
+  console.log("มึงใช้ตัวพวกนี้ได้:", JSON.stringify(data, null, 2));
+}
+
+listModels();
+
+
+const model = genAI.getGenerativeModel({ 
+  model: "gemini-robotics-er-1.5-preview" // มึงใช้ตัวนี้ได้เลย แรงและฉลาดมาก!
+});
+
+console.log("✅ Pawfect AI System Ready ");
+
 
 const prisma = new PrismaClient();
 
@@ -32,17 +87,34 @@ const app = new Elysia()
 
   // 2. Middleware: Inject Prisma & Supabase into Context
   .derive(({ headers }) => {
-    const authHeader = headers["authorization"];
-    const token = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+  const authHeader = headers["authorization"] || headers["Authorization"];
+  
+  let token: string | null = null;
+  if (authHeader && authHeader.startsWith("Bearer ")) {
+    const rawToken = authHeader.split(" ")[1]?.trim();
+    // ✅ ดักเผื่อหน้าบ้านส่ง "null" (string) มาอีกชั้น
+    if (rawToken && rawToken !== "null") {
+      token = rawToken;
+    }
+  }
 
-    const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
-      global: {
-        headers: token ? { Authorization: `Bearer ${token}` } : {},
-      },
-    });
+  // ✅ บอก TypeScript ว่านี่คือ Object ที่มี Key และ Value เป็น String
+  const globalHeaders: Record<string, string> = {};
+  
+  if (token) {
+    globalHeaders["Authorization"] = `Bearer ${token}`;
+  }
 
-    return { supabase, token, prisma };
-  })
+  const supabase = createClient(SUPABASE_URL, SUPABASE_KEY, {
+    global: {
+      headers: globalHeaders,
+    },
+  });
+
+  return { supabase, token, prisma };
+})
+
+
 
   // --- GROUP 1: AUTHENTICATION ---
   .group("/api/auth", (app) =>
@@ -750,9 +822,8 @@ gte: todayStart, // นับเฉพาะนัดหมายที่ยั
   // --- GROUP 4: DIARIES ---
 .group("/api/diaries", (app) =>
   app
-
     /* =======================
-      GET: ดึง diary ของ pet
+      1. GET: ดึงรายการ diary ทั้งหมดของสัตว์เลี้ยง (หน้า List)
     ======================== */
     .get("/:petId", async ({ params, prisma }) => {
       return prisma.diary.findMany({
@@ -762,24 +833,30 @@ gte: todayStart, // นับเฉพาะนัดหมายที่ยั
     })
 
     /* =======================
-      POST: สร้าง diary + upload รูป
+      2. GET: ดึงข้อมูล diary แค่ใบเดียว (หน้า Detail - image_dfd909)
     ======================== */
-    // ✅ 1. เพิ่ม supabase เข้ามาใน object destructuring ตรงนี้
-.post("/", async ({ request, prisma, supabase }) => { 
-      const formData = await request.formData()
+    .get("/detail/:diaryId", async ({ params, prisma }) => {
+      const diary = await prisma.diary.findUnique({
+        where: { id: params.diaryId },
+      });
+      if (!diary) throw new Error("ไม่พบข้อมูลไดอารี่");
+      return diary;
+    })
 
+    /* =======================
+      3. POST: สร้าง diary ใหม่ + upload รูป
+    ======================== */
+    .post("/", async ({ request, prisma, supabase }) => { 
+      const formData = await request.formData()
       const pet_id = formData.get("pet_id") as string
       const title = formData.get("title") as string
       const content = formData.get("content") as string | null
       const log_date = formData.get("log_date") as string
-
       const images = formData.getAll("images") as File[]
+      
       const imageUrls: string[] = []
-
       for (const file of images) {
         if (file instanceof File && file.size > 0) {
-          // ✅ 2. ส่ง supabase (ตัวที่มี Token) เข้าไปในฟังก์ชันด้วย
-          // มั่นใจนะว่ามึงแก้ไส้ในของ uploadDiaryImage ให้รับ parameter ตัวที่ 3 แล้ว
           const url = await uploadDiaryImage(file, pet_id, supabase) 
           imageUrls.push(url)
         }
@@ -795,32 +872,175 @@ gte: todayStart, // นับเฉพาะนัดหมายที่ยั
         },
       })
     })
-    
+
     /* =======================
-      DELETE: ลบ diary
+      4. PUT: แก้ไข diary (จัดการทั้งรูปเก่าและรูปใหม่ - image_dfdc10)
     ======================== */
-    .delete("/:diaryId", async ({ params, prisma, supabase }) => { // 👈 ดึง supabase มาจาก Middleware
+    .put("/:diaryId", async ({ params, request, prisma, supabase }) => {
+      const formData = await request.formData();
+      
+      // ดึงข้อมูลเดิมจาก DB มาก่อน
+      const diary = await prisma.diary.findUnique({ where: { id: params.diaryId } });
+      if (!diary) throw new Error("Diary not found");
+
+      const title = formData.get("title") as string;
+      const content = formData.get("content") as string | null;
+      const log_date = formData.get("log_date") as string;
+      
+      // รูปที่จะเก็บไว้ และ รูปที่จะลบทิ้ง (ส่งมาจากหน้าบ้าน)
+      const keepUrls = JSON.parse(formData.get("keep_urls") as string || "[]");
+      const deleteUrls = JSON.parse(formData.get("delete_urls") as string || "[]");
+      const newFiles = formData.getAll("new_images") as File[];
+
+      // ✅ ลบรูปที่ User กดลบ (x) ออกจาก Storage
+      if (deleteUrls.length > 0) {
+        await Promise.all(deleteUrls.map((url: string) => deleteDiaryImage(url, supabase)));
+      }
+
+      // ✅ อัปโหลดรูปใหม่ (ถ้ามี)
+      const newUploadedUrls: string[] = [];
+      for (const file of newFiles) {
+        if (file instanceof File && file.size > 0) {
+          const url = await uploadDiaryImage(file, diary.pet_id, supabase);
+          newUploadedUrls.push(url);
+        }
+      }
+
+      // ✅ รวมร่าง URL: รูปเก่าที่เหลืออยู่ + รูปใหม่ที่เพิ่งอัป
+      const finalImageUrls = [...keepUrls, ...newUploadedUrls];
+
+      return prisma.diary.update({
+        where: { id: params.diaryId },
+        data: {
+          title,
+          content,
+          log_date: new Date(log_date),
+          image_urls: finalImageUrls,
+        },
+      });
+    })
+
+    /* =======================
+      5. DELETE: ลบ diary และรูปทั้งหมดในนั้น
+    ======================== */
+    .delete("/:diaryId", async ({ params, prisma, supabase }) => {
       const diary = await prisma.diary.findUnique({
         where: { id: params.diaryId },
       })
 
-      if (!diary) {
-        throw new Error("Diary not found")
-      }
+      if (!diary) throw new Error("Diary not found");
 
-      // ✅ ลบรูปโดยใช้สิทธิ์ User
       if (diary.image_urls?.length) {
         await Promise.all(
-          diary.image_urls.map(url => deleteDiaryImage(url, supabase)) // 👈 ส่งกุญแจไปด้วย
+          diary.image_urls.map(url => deleteDiaryImage(url, supabase))
         );
       }
 
-      // ✅ ลบข้อมูลใน Database
       return prisma.diary.delete({
         where: { id: params.diaryId },
       })
     })
 )
+
+
+
+
+  // --- GROUP 5: CHATBOT with Gemini AI ---
+
+     .group('/api/chatbot', (app) => 
+    app
+      .onBeforeHandle(({ token, set }) => {
+        if (!token) {
+          set.status = 401;
+          return { error: "Login ก่อนนะมึง" };
+        }
+      })
+
+
+      
+      .post('/chat', async ({ body, set }) => {
+  const { message, history, imageBase64, imageType } = body;
+  const API_KEY = process.env.GEMINI_API_KEY;
+
+  try {
+    console.log("--- STARTING STRICT TYPE FETCH ---");
+
+    // เตรียมก้อนข้อมูลแบบระบุ Type ชัดเจน
+    const contents: GeminiContent[] = [
+      {
+        role: "user",
+        parts: [{ text: "Instructions: คุณคือ 'Pawfect AI' ผู้เชี่ยวชาญด้านสัตว์เลี้ยงแสนเป็นมิตร... เข้าใจบทบาทแล้วใช่ไหม?" }]
+      },
+      {
+        role: "model",
+        parts: [{ text: "เข้าใจแล้วค่ะ! ฉันคือ Pawfect AI พร้อมช่วยเหลือคุณค่ะ" }]
+      },
+      ...(history as GeminiContent[] || [])
+    ];
+
+    const currentParts: GeminiPart[] = [{ text: message }];
+    
+    if (imageBase64 && imageType) {
+      currentParts.push({
+        inlineData: {
+          mimeType: imageType,
+          data: imageBase64
+        }
+      });
+    }
+
+    contents.push({ role: "user", parts: currentParts });
+
+    const response = await fetch(
+  `https://generativelanguage.googleapis.com/v1beta/models/gemini-robotics-er-1.5-preview:generateContent?key=${GEMINI_API_KEY}`,
+  {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ contents })
+  }
+);
+
+    // Cast ข้อมูลขากลับเป็น Interface ที่เราทำไว้
+    const data = (await response.json()) as GeminiResponse;
+
+    if (!response.ok) {
+      console.error("❌ Google Error Detail:", JSON.stringify(data, null, 2));
+      throw new Error(data.error?.message || "Google API Failure");
+    }
+
+    const aiResponseText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    
+    console.log("✅ AI RESPONDED:", aiResponseText?.substring(0, 50) + "...");
+
+    return {
+      role: "model",
+      text: aiResponseText || "AI นิ่งเงียบไปว่ะมึง"
+    };
+
+  } catch (err) {
+    const error = err as Error;
+    console.error("--- CRITICAL ERROR ---", error.message);
+    set.status = 500;
+    return { error: "พังว่ะมึง: " + error.message };
+  }
+}, {
+  body: t.Object({
+    message: t.String(),
+    history: t.Optional(t.Array(t.Object({
+      role: t.Union([t.Literal('user'), t.Literal('model')]),
+      parts: t.Array(t.Object({ 
+        text: t.Optional(t.String()),
+        inlineData: t.Optional(t.Object({
+          mimeType: t.String(),
+          data: t.String()
+        }))
+      }))
+    }))),
+    imageBase64: t.Optional(t.String()),
+    imageType: t.Optional(t.String())
+  })
+})
+     )
 
 
 
@@ -834,29 +1054,37 @@ console.log(`🦊 Elysia Server is running at ${app.server?.hostname}:${app.serv
 
 
 
+// ใน Backend: ฟังก์ชัน deleteDiaryImage
 async function deleteDiaryImage(url: string, supabaseClient: SupabaseClient) {
   try {
-    // 1. แกะ Path ออกจาก URL (เหมือนเดิม)
-    const path = url.split('/storage/v1/object/public/diaries/')[1];
-    if (!path) return;
+    const bucketName = 'diaries';
+    const rawPath = url.includes('http') ? url.split(`/${bucketName}/`)[1] : url;
+    
+    if (!rawPath) return;
 
-    // 2. ใช้กุญแจที่ส่งมา (ซึ่งมี Token User อยู่) สั่งลบ
+    // ✅ ไม้ตาย: แยกด้วย / -> ลบช่องว่างแต่ละส่วน -> กรองค่าว่างออก -> รวมใหม่
+    const path = decodeURIComponent(rawPath)
+      .split('/')
+      .map(part => part.trim())
+      .filter(part => part.length > 0)
+      .join('/');
+
+    console.log("🛠️ Path ที่คลีนแล้วจริงๆ:", `"${path}"`);
+
     const { error } = await supabaseClient.storage
-      .from('diaries') // ชื่อต้องตัวเล็กเป๊ะ
+      .from(bucketName)
       .remove([path]);
 
     if (error) {
-      // ถ้าลบไม่ได้เพราะ RLS จะพ่น Error ตรงนี้
-      console.error("User ลบรูปไม่สำเร็จ:", error.message);
+      console.error("❌ Storage API Error:", error);
       throw error;
     }
+    console.log("✅ ลบสำเร็จ!");
   } catch (err) {
-    console.error("Error deleting image:", err);
+    console.error("💥 ลบรูปพัง:", err);
     throw err;
   }
 }
-
-
 
 
 

@@ -17,6 +17,8 @@ import {
 import { supabase  } from "@/lib/supabase-client";
 import { title } from "process";
 import { time } from "framer-motion";
+import Link from "next/link";
+
 
 
 
@@ -1213,7 +1215,7 @@ const handleToggleStatus = async (
       onChange={(e) => setLogDate(e.target.value)}
     />
 
-    {/* อัปโหลดรูป */}
+  
 {/* อัปโหลดรูป */}
 <label className="text-sm text-slate-600 font-medium mt-4 block">
   รูปภาพ
@@ -1313,16 +1315,18 @@ const handleToggleStatus = async (
 </div>
   </div>
 )}
+
+
 {/* =======================
   Diary List
 ======================= */}
 
 {diaries.map((diary) => (
-  <div
+  <Link
     key={diary.id}
+   href={`/iddiarie/${diary.id}`}
     // ✅ 1. เพิ่ม 'relative' เพื่อให้ปุ่มกากบาทอ้างอิงตำแหน่งกับ Card นี้
-    className="relative bg-white rounded-2xl shadow-sm border overflow-hidden hover:shadow-md transition group"
-  >
+    className="relative bg-white rounded-2xl shadow-sm border overflow-hidden hover:shadow-md transition group cursor-pointer">
     {/* ✅ 2. ปุ่มกากบาท (Delete Button) */}
     <button
       onClick={(e) => {
@@ -1381,7 +1385,7 @@ const handleToggleStatus = async (
         </p>
       )}
     </div>
-  </div>
+  </Link>
 ))}
      
      

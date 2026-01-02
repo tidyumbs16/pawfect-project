@@ -14,7 +14,7 @@ export default function Sections() {
       desc: "คุยกับ AI เพื่อขอคำแนะนำเกี่ยวกับสัตว์เลี้ยง",
       // ใช้รูปภาพ sec2.png (สีฟ้า)
       img: "/sec2.png",
-      link: "#chatbot",
+      link: "/aichat",
     },
     {
       title: "ชื่อยอดนิยม",

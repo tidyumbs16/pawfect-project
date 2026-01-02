@@ -49,7 +49,7 @@ export default function Navbar() {
 
   const ref = useRef<HTMLDivElement>(null);
 
-  // 🔥 โหลด session จาก API ของ Bun
+  // 🔥 โหลด session จาก API 
   useEffect(() => {
     async function loadUser() {
       const { data: { session } } = await supabase.auth.getSession();
