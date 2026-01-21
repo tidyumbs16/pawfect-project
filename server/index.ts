@@ -66,14 +66,14 @@ const genAI = new GoogleGenerativeAI(GEMINI_API_KEY);
 async function listModels() {
   const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models?key=${process.env.GEMINI_API_KEY}`);
   const data = await response.json();
-  console.log("มึงใช้ตัวพวกนี้ได้:", JSON.stringify(data, null, 2));
+  console.log("โมเดลที่ใช้ได้:", JSON.stringify(data, null, 2));
 }
 
 listModels();
 
 
 const model = genAI.getGenerativeModel({ 
-  model: "gemini-robotics-er-1.5-preview" // มึงใช้ตัวนี้ได้เลย แรงและฉลาดมาก!
+  model: "gemini-robotics-er-1.5-preview" 
 });
 
 console.log("✅ Pawfect AI System Ready ");
@@ -219,49 +219,156 @@ const app = new Elysia()
       })
   )
 
-  // --- GROUP 2: PROFILE ---
   .group("/api/profile", (app) =>
-    app.put("/update", async ({ body, supabase, token, prisma }) => {
-      if (!token) return { ok: false, message: "Unauthorized" };
+  app.put("/update", async ({ body, supabase, set, prisma }) => {
+  // 1. Check Auth
+  const { data: { user }, error } = await supabase.auth.getUser();
+  
+  if (error || !user) {
+    set.status = 401;
+    return { ok: false, message: "Unauthorized: Invalid Token" };
+  }
 
-      const { id, ...updates } = body;
+  const { id, username, bio, gender, birthdate, avatar_url } = body;
 
-      // Validate Owner
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user || user.id !== id) return { ok: false, message: "Forbidden" };
+  // 2. Security Check
+  if (user.id !== id) {
+    set.status = 403;
+    return { ok: false, message: "Forbidden: You can only update your own profile" };
+  }
 
-      try {
-        await prisma.profiles.update({
-          where: { id: id },
-          data: updates
-        });
-        return { ok: true };
-      } catch (e) {
-        // แก้ไข: ใช้ Type Check แทน any
-        const message = e instanceof Error ? e.message : String(e);
-        return { ok: false, message };
+  try {
+    let publicAvatarUrl = undefined;
+
+    // ------------------------------------------------------------------
+    // 3. Logic อัปโหลดรูป + ลบรูปเก่า (ทำงานเฉพาะตอนมีไฟล์ส่งมา)
+    // ------------------------------------------------------------------
+    if (avatar_url && avatar_url instanceof File) {
+      
+      // 3.1 ตรวจสอบขนาดไฟล์
+      if (avatar_url.size > 5 * 1024 * 1024) {
+         throw new Error("Image too large (Max 5MB)");
       }
-    }, {
-      body: t.Object({
-        id: t.String(),
-        username: t.String(),
-        bio: t.Optional(t.String()),
-        gender: t.Optional(t.String()),
-        birthdate: t.Optional(t.String())
-      })
+
+      // 3.2 เตรียมชื่อไฟล์ใหม่
+      const fileExt = avatar_url.name.split('.').pop();
+      const fileName = `${user.id}-${Date.now()}.${fileExt}`;
+      const filePath = `${fileName}`;
+
+      // 3.3 อัปโหลดรูปใหม่ขึ้นไปก่อน
+      const { error: uploadError } = await supabase.storage
+        .from('avatars') 
+        .upload(filePath, avatar_url, {
+          upsert: true,
+          contentType: avatar_url.type || 'image/jpeg'
+        });
+
+      if (uploadError) throw new Error("Upload failed: " + uploadError.message);
+
+      // 3.4 ได้ URL ใหม่มาแล้ว
+      const { data } = supabase.storage
+        .from('avatars')
+        .getPublicUrl(filePath);
+      
+      publicAvatarUrl = data.publicUrl;
+
+      // =========================================================
+      // 🔥 เพิ่มส่วนนี้: ลบรูปเก่าทิ้ง (Clean up)
+      // =========================================================
+      // ดึงข้อมูลเก่าจาก Prisma เพื่อดูว่า URL เดิมคืออะไร
+      const oldProfile = await prisma.profiles.findUnique({
+          where: { id: user.id },
+          select: { avatar_url: true } // เอาแค่ field นี้พอ ประหยัดแรง
+      });
+
+      if (oldProfile?.avatar_url) {
+          const oldUrl = oldProfile.avatar_url;
+          
+          // เช็คว่าเป็นรูปใน Supabase ของเราจริงไหม (ต้องมีชื่อโปรเจคเรา หรือมีคำว่า supabase)
+          // และต้องไม่ใช่รูปเดียวกับที่เพิ่งอัปโหลดไป (กันพลาด)
+          if (oldUrl.includes("supabase.co") && oldUrl !== publicAvatarUrl) {
+              
+              // ดึงชื่อไฟล์จาก URL (เอาตัวหลัง / ตัวสุดท้าย)
+              // เช่น .../avatars/user-123.png -> ได้ "user-123.png"
+              const oldFileName = oldUrl.split('/').pop();
+
+              if (oldFileName) {
+                  console.log("🗑️ กำลังลบรูปเก่า:", oldFileName);
+                  await supabase.storage
+                      .from('avatars')
+                      .remove([oldFileName]); // สั่งลบเลย
+              }
+          }
+      }
+      // =========================================================
+    }
+
+    // 4. Update ลง Prisma
+    const updatedProfile = await prisma.profiles.update({
+      where: { id: user.id },
+      data: {
+        username,
+        bio,
+        gender,
+        // แปลงวันที่ (ถ้ามี)
+        birthdate: birthdate ? new Date(birthdate) : null,
+        
+        // ถ้ามี URL ใหม่ (จากการอัปโหลด) ให้บันทึกทับ, ถ้าไม่มี ให้ปล่อยว่างไว้ (Prisma จะไม่แตะ field นี้)
+        ...(publicAvatarUrl && { avatar_url: publicAvatarUrl }) 
+      }
+    });
+
+    return { ok: true, data: updatedProfile };
+
+  } catch (err) {
+    console.error(err);
+    set.status = 500;
+    return { ok: false, message: err instanceof Error ? err.message : "Internal Server Error" };
+  }
+  }, {
+    // 🔥 Schema Validation
+    body: t.Object({
+      id: t.String(),
+      username: t.String(),
+      bio: t.Optional(t.String()),
+      gender: t.Optional(t.String()),
+      birthdate: t.Optional(t.String()),
+      // 🚨 แก้จุดที่ 3: ต้องตั้งชื่อ field ให้ตรงกับที่ Frontend ส่งมา (frontend ส่ง 'avatar')
+      avatar_url: t.Optional(t.File()) 
     })
-  )
+  })
+)
 
 
   .group("/api/pets", (app) =>
   app
     // GET: ดึงสัตว์เลี้ยงทั้งหมด
-    .get("/", async ({ prisma }) => {
+    .get("/", async ({ prisma, request, supabase, set }) => {
   try {
-    const pets = await prisma.pet.findMany({
-      orderBy: { createdAt: "desc" }
-    })
+    // 1. ดึง Token จาก Header เพื่อระบุตัวตน (เหมือนที่คุณทำใน POST)
+   const authHeader = request.headers.get("Authorization"); 
+  const token = authHeader?.replace("Bearer ", "");
 
+    if (!token) {
+      set.status = 401;
+      return { error: "Unauthorized: Please login first" };
+    }
+
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      set.status = 401;
+      return { error: "Invalid token" };
+    }
+
+    // 2. 🔥 แก้ไขตรงนี้: เพิ่ม WHERE เพื่อดึงเฉพาะสัตว์เลี้ยงที่ owner_id ตรงกับ user.id
+    const pets = await prisma.pet.findMany({
+      where: {
+        owner_id: user.id // ✅ กรองให้เห็นเฉพาะของตัวเองเท่านั้น
+      },
+      orderBy: { createdAt: "desc" }
+    });
+
+    // 3. ดึงข้อมูล Owner มาแนบ (คงไว้ตาม Logic เดิมของคุณ)
     const petsWithOwner = await Promise.all(
       pets.map(async (pet) => {
         const owner = await prisma.profiles.findUnique({
@@ -271,22 +378,22 @@ const app = new Elysia()
             username: true,
             avatar_url: true,
           },
-        })
+        });
 
         return {
           ...pet,
           owner,
-        }
+        };
       })
-    )
+    );
 
-    return petsWithOwner
+    return petsWithOwner;
   } catch (error) {
-    console.error("Error fetching pets:", error)
-    return { error: "Failed to fetch pets" }
+    console.error("Error fetching pets:", error);
+    set.status = 500;
+    return { error: "Failed to fetch pets" };
   }
 })
-
 
     // POST: เพิ่มสัตว์เลี้ยง
 .post(
@@ -822,43 +929,65 @@ gte: todayStart, // นับเฉพาะนัดหมายที่ยั
   // --- GROUP 4: DIARIES ---
 .group("/api/diaries", (app) =>
   app
-    /* =======================
-      1. GET: ดึงรายการ diary ทั้งหมดของสัตว์เลี้ยง (หน้า List)
-    ======================== */
-    .get("/:petId", async ({ params, prisma }) => {
+    /* 1. GET: ดึงรายการทั้งหมดของสัตว์เลี้ยงตัวนั้น (ต้องเป็นเจ้าของ) */
+    .get("/:petId", async ({ params, prisma, request, supabase }) => {
+      const authHeader = request.headers.get("authorization");
+      const token = authHeader?.split(" ")[1];
+      const { data: { user } } = await supabase.auth.getUser(token || "");
+      if (!user) throw new Error("Unauthorized");
+
       return prisma.diary.findMany({
-        where: { pet_id: params.petId },
+        where: { 
+          pet_id: params.petId,
+          pet: { owner_id: user.id } // ✅ กรองเฉพาะสัตว์เลี้ยงของตัวเอง
+        },
         orderBy: { log_date: "desc" },
-      })
+      });
     })
 
-    /* =======================
-      2. GET: ดึงข้อมูล diary แค่ใบเดียว (หน้า Detail - image_dfd909)
-    ======================== */
-    .get("/detail/:diaryId", async ({ params, prisma }) => {
-      const diary = await prisma.diary.findUnique({
-        where: { id: params.diaryId },
+    /* 2. GET: ดึงข้อมูลใบเดียว (ใช้ findFirst แทน findUnique เพื่อเช็คเจ้าของ) */
+    .get("/detail/:diaryId", async ({ params, prisma, request, supabase }) => {
+      const authHeader = request.headers.get("authorization");
+      const token = authHeader?.split(" ")[1];
+      const { data: { user } } = await supabase.auth.getUser(token || "");
+      if (!user) throw new Error("Unauthorized");
+
+      const diary = await prisma.diary.findFirst({ // ✅ ใช้ findFirst เพราะต้องเช็ค owner_id
+        where: { 
+          id: params.diaryId,
+          pet: { owner_id: user.id } 
+        },
       });
-      if (!diary) throw new Error("ไม่พบข้อมูลไดอารี่");
+      if (!diary) throw new Error("ไม่พบข้อมูล หรือคุณไม่มีสิทธิ์เข้าถึง");
       return diary;
     })
 
-    /* =======================
-      3. POST: สร้าง diary ใหม่ + upload รูป
-    ======================== */
+    /* 3. POST: สร้างใหม่ (ต้องเช็คก่อนว่า pet_id ที่ส่งมา เราเป็นเจ้าของจริงไหม) */
     .post("/", async ({ request, prisma, supabase }) => { 
-      const formData = await request.formData()
-      const pet_id = formData.get("pet_id") as string
-      const title = formData.get("title") as string
-      const content = formData.get("content") as string | null
-      const log_date = formData.get("log_date") as string
-      const images = formData.getAll("images") as File[]
+      const formData = await request.formData();
+      const authHeader = request.headers.get("authorization");
+      const token = authHeader?.split(" ")[1];
+      const { data: { user } } = await supabase.auth.getUser(token || "");
+      if (!user) throw new Error("Unauthorized");
+
+      const pet_id = formData.get("pet_id") as string;
       
-      const imageUrls: string[] = []
+      // ✅ เช็คสิทธิ์เจ้าของสัตว์เลี้ยงก่อนสร้าง Diary
+      const pet = await prisma.pet.findFirst({
+        where: { id: pet_id, owner_id: user.id }
+      });
+      if (!pet) throw new Error("คุณไม่มีสิทธิ์สร้างไดอารี่ให้สัตว์เลี้ยงตัวนี้");
+
+      // ... Logic อัปโหลดรูปเดิมของคุณ ...
+      const title = formData.get("title") as string;
+      const content = formData.get("content") as string | null;
+      const log_date = formData.get("log_date") as string;
+      const images = formData.getAll("images") as File[];
+      const imageUrls: string[] = [];
       for (const file of images) {
         if (file instanceof File && file.size > 0) {
-          const url = await uploadDiaryImage(file, pet_id, supabase) 
-          imageUrls.push(url)
+          const url = await uploadDiaryImage(file, pet_id, supabase);
+          imageUrls.push(url);
         }
       }
 
@@ -870,34 +999,35 @@ gte: todayStart, // นับเฉพาะนัดหมายที่ยั
           log_date: new Date(log_date),
           image_urls: imageUrls,
         },
-      })
+      });
     })
 
-    /* =======================
-      4. PUT: แก้ไข diary (จัดการทั้งรูปเก่าและรูปใหม่ - image_dfdc10)
-    ======================== */
+    /* 4. PUT: แก้ไข (เช็คเจ้าของผ่าน findFirst ก่อนอัปเดต) */
     .put("/:diaryId", async ({ params, request, prisma, supabase }) => {
-      const formData = await request.formData();
-      
-      // ดึงข้อมูลเดิมจาก DB มาก่อน
-      const diary = await prisma.diary.findUnique({ where: { id: params.diaryId } });
-      if (!diary) throw new Error("Diary not found");
+      const authHeader = request.headers.get("authorization");
+      const token = authHeader?.split(" ")[1];
+      const { data: { user } } = await supabase.auth.getUser(token || "");
+      if (!user) throw new Error("Unauthorized");
 
+      // ✅ เช็คเจ้าของก่อน
+      const diary = await prisma.diary.findFirst({ 
+        where: { id: params.diaryId, pet: { owner_id: user.id } } 
+      });
+      if (!diary) throw new Error("Diary not found or Access Denied");
+
+      // ... Logic จัดการรูปและ Update เดิมของคุณ ...
+      const formData = await request.formData();
       const title = formData.get("title") as string;
       const content = formData.get("content") as string | null;
       const log_date = formData.get("log_date") as string;
-      
-      // รูปที่จะเก็บไว้ และ รูปที่จะลบทิ้ง (ส่งมาจากหน้าบ้าน)
       const keepUrls = JSON.parse(formData.get("keep_urls") as string || "[]");
       const deleteUrls = JSON.parse(formData.get("delete_urls") as string || "[]");
       const newFiles = formData.getAll("new_images") as File[];
 
-      // ✅ ลบรูปที่ User กดลบ (x) ออกจาก Storage
       if (deleteUrls.length > 0) {
         await Promise.all(deleteUrls.map((url: string) => deleteDiaryImage(url, supabase)));
       }
 
-      // ✅ อัปโหลดรูปใหม่ (ถ้ามี)
       const newUploadedUrls: string[] = [];
       for (const file of newFiles) {
         if (file instanceof File && file.size > 0) {
@@ -906,39 +1036,30 @@ gte: todayStart, // นับเฉพาะนัดหมายที่ยั
         }
       }
 
-      // ✅ รวมร่าง URL: รูปเก่าที่เหลืออยู่ + รูปใหม่ที่เพิ่งอัป
-      const finalImageUrls = [...keepUrls, ...newUploadedUrls];
-
       return prisma.diary.update({
         where: { id: params.diaryId },
-        data: {
-          title,
-          content,
-          log_date: new Date(log_date),
-          image_urls: finalImageUrls,
-        },
+        data: { title, content, log_date: new Date(log_date), image_urls: [...keepUrls, ...newUploadedUrls] },
       });
     })
 
-    /* =======================
-      5. DELETE: ลบ diary และรูปทั้งหมดในนั้น
-    ======================== */
-    .delete("/:diaryId", async ({ params, prisma, supabase }) => {
-      const diary = await prisma.diary.findUnique({
-        where: { id: params.diaryId },
-      })
+    /* 5. DELETE: ลบ (เช็คเจ้าของก่อนลบ) */
+    .delete("/:diaryId", async ({ params, prisma, supabase, request }) => {
+      const authHeader = request.headers.get("authorization");
+      const token = authHeader?.split(" ")[1];
+      const { data: { user } } = await supabase.auth.getUser(token || "");
+      if (!user) throw new Error("Unauthorized");
 
-      if (!diary) throw new Error("Diary not found");
+      const diary = await prisma.diary.findFirst({
+        where: { id: params.diaryId, pet: { owner_id: user.id } },
+      });
+
+      if (!diary) throw new Error("Diary not found or Access Denied");
 
       if (diary.image_urls?.length) {
-        await Promise.all(
-          diary.image_urls.map(url => deleteDiaryImage(url, supabase))
-        );
+        await Promise.all(diary.image_urls.map(url => deleteDiaryImage(url, supabase)));
       }
 
-      return prisma.diary.delete({
-        where: { id: params.diaryId },
-      })
+      return prisma.diary.delete({ where: { id: params.diaryId } });
     })
 )
 
@@ -952,12 +1073,12 @@ gte: todayStart, // นับเฉพาะนัดหมายที่ยั
       .onBeforeHandle(({ token, set }) => {
         if (!token) {
           set.status = 401;
-          return { error: "Login ก่อนนะมึง" };
+          return { error: "Login ก่อนนะ" };
         }
       })
 
 
-      
+
       .post('/chat', async ({ body, set }) => {
   const { message, history, imageBase64, imageType } = body;
   const API_KEY = process.env.GEMINI_API_KEY;
@@ -965,7 +1086,7 @@ gte: todayStart, // นับเฉพาะนัดหมายที่ยั
   try {
     console.log("--- STARTING STRICT TYPE FETCH ---");
 
-    // เตรียมก้อนข้อมูลแบบระบุ Type ชัดเจน
+    // เตรียมก้อนข้อมูลแบบระบุ Type 
     const contents: GeminiContent[] = [
       {
         role: "user",
@@ -1000,7 +1121,7 @@ gte: todayStart, // นับเฉพาะนัดหมายที่ยั
   }
 );
 
-    // Cast ข้อมูลขากลับเป็น Interface ที่เราทำไว้
+    // Cast ข้อมูลขากลับเป็น Interface 
     const data = (await response.json()) as GeminiResponse;
 
     if (!response.ok) {
@@ -1014,14 +1135,14 @@ gte: todayStart, // นับเฉพาะนัดหมายที่ยั
 
     return {
       role: "model",
-      text: aiResponseText || "AI นิ่งเงียบไปว่ะมึง"
+      text: aiResponseText || "AI นิ่ง"
     };
 
   } catch (err) {
     const error = err as Error;
     console.error("--- CRITICAL ERROR ---", error.message);
     set.status = 500;
-    return { error: "พังว่ะมึง: " + error.message };
+    return { error: "AIพัง: " + error.message };
   }
 }, {
   body: t.Object({
@@ -1040,8 +1161,85 @@ gte: todayStart, // นับเฉพาะนัดหมายที่ยั
     imageType: t.Optional(t.String())
   })
 })
-     )
+    
 
+
+
+
+
+)
+// --- API สำหรับสุ่มชื่อสัตว์เลี้ยง (แยกออกมาตามที่มึงบอก) ---
+.group('/api/pet-generator', (app) => 
+  app
+    // 1. เช็ค Token ก่อนเข้าใช้งาน (เหมือน chatbot เป๊ะ)
+    .onBeforeHandle(({ token, set }) => {
+      if (!token) {
+        set.status = 401;
+        return { error: "Login ก่อนนะมึง" };
+      }
+    })
+
+    // 2. Route สำหรับสุ่ม 3 ชื่อ
+    .post('/generate', async ({ body, set }) => {
+      const { petType, description } = body;
+      const API_KEY = process.env.GEMINI_API_KEY;
+
+      try {
+        console.log("--- STARTING NAME GENERATION (3 NAMES) ---");
+
+        // Prompt บังคับเอา 3 ชื่อ และเป็น JSON
+        const prompt = `คุณคือ 'Pawfect AI' ผู้เชี่ยวชาญการตั้งชื่อสัตว์เลี้ยง 
+        ช่วยตั้งชื่อ ${petType} ที่มีลักษณะคือ: "${description}" 
+        ขอมาแค่ 3 ชื่อเท่านั้นที่ดูดีและมีความหมาย 
+        ตอบกลับเป็น JSON เท่านั้นในรูปแบบนี้:
+        {
+          "names": [
+            { "nameTh": "ชื่อไทย", "nameEn": "EnglishName", "tag": "คำนิยามสั้นๆ", "meaning": "ความหมาย" }
+          ]
+        }`;
+
+        const response = await fetch(
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-robotics-er-1.5-preview:generateContent?key=${API_KEY}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              contents: [{ role: "user", parts: [{ text: prompt }] }],
+              generationConfig: { 
+                responseMimeType: "application/json",
+                temperature: 0.8 // ให้มันมีความคิดสร้างสรรค์หน่อย
+              }
+            })
+          }
+        );
+
+        const data = (await response.json()) as GeminiResponse;
+
+        if (!response.ok) {
+          console.error("❌ Gemini Error:", JSON.stringify(data, null, 2));
+          throw new Error(data.error?.message || "Google API Failure");
+        }
+
+        const resultText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+        const resultJson = JSON.parse(resultText || "{}");
+
+        console.log("✅ 3 NAMES GENERATED SUCCESSFULLY");
+
+        return resultJson; // คืนค่า { names: [...] }
+
+      } catch (err) {
+        const error = err as Error;
+        console.error("--- NAME GENERATOR CRITICAL ERROR ---", error.message);
+        set.status = 500;
+        return { error: "ระบบสุ่มชื่อพัง: " + error.message };
+      }
+    }, {
+      body: t.Object({
+        petType: t.String(),
+        description: t.String()
+      })
+    })
+)
 
 
 

@@ -7,7 +7,7 @@ export default function Sections() {
       desc: "ใช้ AI สร้างชื่อที่เหมาะสมสำหรับสัตว์เลี้ยงของคุณ",
       // ใช้รูปภาพ sec1.png (สีส้ม)
       img: "/sec1.png", 
-      link: "#random", 
+      link: "/randome", 
     },
     {
       title: "AI Chatbot",
@@ -21,14 +21,14 @@ export default function Sections() {
       desc: "ดูชื่อที่ได้รับความนิยมสูงสุด",
       // ใช้รูปภาพ sec3.png (สีเขียว)
       img: "/sec3.png",
-      link: "#popular",
+      link: "/toptier",
     },
     {
       title: "Diary",
       desc: "เก็บความทรงจำกับสัตว์เลี้ยงตัวโปรดของคุณ",
-      // ใช้รูปภาพ sec4.png (สีแดง/ชมพู)
+
       img: "/sec4.png",
-      link: "#diary",
+      link: "/diary",
     },
   ];
 

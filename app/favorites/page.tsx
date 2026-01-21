@@ -3,6 +3,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase-client';
 import Image from 'next/image';
 import FavoriteCard from '@/components/FavoriteCard'; // เช็ค path ให้ถูกนะมึง
+import { useRouter } from 'next/navigation';
 
 // --- Interface (ห้ามหาย) ---
 interface IFavoriteItem { favId: number; nameTh: string; nameEn: string; meaning: string; tag: string; }
@@ -14,6 +15,19 @@ export default function FavoritesPage() {
   const [activeTab, setActiveTab] = useState("ทั้งหมด"); // State ควบคุมแท็บ
   const [loading, setLoading] = useState(true);
   const [userId, setUserId] = useState<string | null>(null);
+  const router = useRouter();
+
+  useEffect(() => {
+    const checkAuth = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        // 🚩 ถ้าไม่มี session ให้เตะไปหน้า login ทันที
+        router.push('/auth/login'); 
+      }
+    };
+    checkAuth();
+  }, []);
 
   useEffect(() => {
     const getSession = async () => {
@@ -107,7 +121,7 @@ export default function FavoritesPage() {
       </div>
 
       {/* --- Main Container สีส้มของมึง --- */}
-      <div className="w-full max-w-6xl rounded-md p-6 shadow-sm bg-linear-to-t from-[#FA972A] via-[#FE972A] to-[#FFBE39]">
+      <div className="w-full max-w-6xl rounded-lg p-6 shadow-sm bg-linear-to-t from-[#FA972A] via-[#FE972A] to-[#FFBE39]">
         <div className="flex flex-wrap gap-5 justify-center">
           {filteredFavorites.length > 0 ? (
             filteredFavorites.map((item) => (

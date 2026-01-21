@@ -7,6 +7,24 @@ import { Bell } from "lucide-react";
 import NotificationItem from "@/components/NotificationItem";
 import Tab from "@/components/Tab";
 import { useNotifications } from "@/hooks/useNotifications";
+import { Lemon } from 'next/font/google';
+import Image from "next/image";
+import { Lexend } from "next/font/google";
+
+// ตั้งค่าฟอนต์ Lemon
+const lemon = Lemon({ 
+  weight: '400', 
+  subsets: ['latin'],
+  display: 'swap',
+});
+
+ 
+const lexend = Lexend({ 
+  weight: '400', 
+  subsets: ['latin'],
+  display: 'swap',
+});
+
 
 // ✅ 1. กำหนด URL Backend
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
@@ -149,102 +167,129 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="bg-[#F67F00] text-white w-full py-3 px-2 shadow-md">
-        <div className="flex items-center justify-between pl-12 pr-12">
+      <nav className="bg-[#F67F00] text-white w-full py-4 px-2 shadow-md">
+        <div className="flex items-center justify-between pl-10 pr-12">
           {/* LEFT */}
           <div className="flex items-center">
-            <Link href="/" className="text-xl font-bold">
-              🐾 Pawfect Name
-            </Link>
+            <Link href="/" className={`${lemon.className} text-xl font-bold`}>
+<Image
+  src="/iconnav.png"
+  alt="Pawfect Logo"
+  width={40}
+  height={40}
+  className="inline-block mr-2"
+/>
+  Pawfect Name
+</Link>
 
-            <ul className="flex items-center gap-6 ml-10">
+            <ul className={`${lexend.className} flex items-center gap-8 `}>
               <li>
+                
                 <Link
                   href="/"
-                  className="flex items-center gap-1.5 hover:text-gray-200"
+                  className="flex items-center gap-2 hover:text-gray-200 ml-10"
                 >
-                  <IconHome />
-                  Home
+<span className="w-5 h-5 flex items-center justify-center overflow-hidden">
+    <IconHome />
+  </span>
+  
+  <span className="text-[16px]">Home</span>
                 </Link>
               </li>
               <li>
                 <Link href="/about" className="hover:text-gray-200">
-                  About Us
+              <span className="text-[16px]">About Us</span>
                 </Link>
               </li>
               <li>
                 <Link href="#section5" className="hover:text-gray-200">
-                  Contact Us
+                             <span className="text-[16px]">Contact Us</span>
+
                 </Link>
               </li>
             </ul>
           </div>
 
-          {/* RIGHT */}
-          <div className="flex items-center gap-6">
-            {username && (
-              <span className="text-white font-semibold text-lg">
-                Welcome, {username} 👋🏻✨
-              </span>
-            )}
+         {/* RIGHT */}
+<div className={`${lexend.className} flex items-center gap-6`}> 
+  {/* เพิ่มช่องว่างตรงนี้ ^ เพื่อให้ flex ทำงาน */}
 
-            <Link
-              href="/favorites"
-              className="flex items-center gap-1.5 hover:text-gray-200"
-            >
-              <IconHeart /> Favorites
-            </Link>
+  {username && (
+    <span className="text-white font-semibold">
+      Welcome, {username} 👋🏻✨
+    </span>
+  )}
 
-            <Link
-              href="/profile"
-              className="flex items-center gap-1.5 hover:text-gray-200"
-            >
-              <IconProfile /> Profile
-            </Link>
+  <Link
+    href="/favorites"
+    className="flex items-center gap-1.5 hover:text-gray-200"
+  >
+    {/* ใช้เทคนิค span ครอบเพื่อให้ไอคอนเล็กลงตามที่คุณต้องการ */}
+    <span className="w-5 h-5 flex items-center justify-center">
+      <IconHeart />
+    </span> 
+    Favorites
+  </Link>
 
-            {/* ✅ Notification */}
-            <div className="relative" ref={ref}>
-              <button
-                onClick={() => setOpen(!open)}
-                className="relative flex items-center gap-1.5 hover:text-gray-200"
-              >
-                <Bell size={20} />
-                {/* ✅ Badge แสดงจำนวนการแจ้งเตือน */}
-                {unreadCount > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs w-5 h-5 rounded-full flex items-center justify-center font-bold">
-                    {unreadCount > 9 ? "9+" : unreadCount}
-                  </span>
-                )}
-              </button>
+  <Link
+    href="/profile"
+    className="flex items-center gap-1.5 hover:text-gray-200"
+  >
+    <span className="w-5 h-5 flex items-center justify-center">
+      <IconProfile />
+    </span> 
+    Profile
+  </Link>
+
+  {/* ✅ Notification */}
+  <div className="relative" ref={ref}>
+    <button
+      onClick={() => setOpen(!open)}
+      className="relative flex items-center gap-1.5 hover:text-gray-200"
+    >
+      <Bell 
+        size={19}
+        fill="#FFF"
+        color="#FFF" 
+      />
+      {/* Badge จำนวนการแจ้งเตือน */}
+      {unreadCount > 0 && (
+        <span className="absolute -top-2 -right-2 bg-red-500 text-white text-[10px] w-4 h-4 rounded-full flex items-center justify-center font-bold border border-orange-500">
+          {unreadCount > 9 ? "9+" : unreadCount}
+        </span>
+      )}
+    </button>
 
               {/* Dropdown */}
               {open && (
-                <div className="absolute right-0 mt-3 w-96 bg-white rounded-2xl shadow-lg border border-gray-100 z-50">
-                  {/* Header */}
-                  <div className="px-4 py-3 border-b font-semibold text-slate-700 flex items-center justify-between">
-                    แจ้งเตือนกิจกรรมนัดหมาย
-                    <div className="flex items-center gap-2"></div>
-                  </div>
+  <div className="absolute right-0 mt-6 w-[420px] bg-white rounded-[15px] shadow-lg[0_20px_60px_rgba(0,0,0,0.1)] border-none z-50 overflow-hidden animate-in fade-in zoom-in duration-300">
+    
+    {/* Header Section */}
+    <div className="px-8 py-6 flex items-center justify-between">
+      <h3 className="text-[22px] font-bold text-[#425466]">
+        แจ้งเตือนกิจกรรมนัดหมาย
+      </h3>
+      <Bell size={28} className="text-[#C1C7D0]" />
+    </div>
 
-                  {/* Tabs */}
-                  <div className="flex px-3 py-2 gap-2">
-                    <Tab
-                      label="วันนี้"
-                      active={activeTab === "today"}
-                      onClick={() => setActiveTab("today")}
-                    />
-                    <Tab
-                      label="กำลังมาถึง"
-                      active={activeTab === "upcoming"}
-                      onClick={() => setActiveTab("upcoming")}
-                    />
-                    <Tab
-                      label="ที่ผ่านมา"
-                      active={activeTab === "past"}
-                      onClick={() => setActiveTab("past")}
-                    />
-                  </div>
-
+    {/* Tabs Section - ปรับพื้นหลังให้ขาวสะอาด */}
+    <div className="flex px-6 py-2 gap-5 mb-4 ">
+      <Tab
+        label="วันนี้"
+        active={activeTab === "today"}
+        onClick={() => setActiveTab("today")}
+      />
+      <Tab
+        label="กำลังมาถึง"
+        active={activeTab === "upcoming"}
+        onClick={() => setActiveTab("upcoming")}
+      />
+      <Tab
+        label="ที่ผ่านมา"
+        active={activeTab === "past"}
+        onClick={() => setActiveTab("past")}
+      />
+    </div>
                   {/* Content */}
                   <div className="max-h-96 overflow-y-auto px-2">
                     {isLoading ? (
@@ -299,7 +344,7 @@ export default function Navbar() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="relative w-[520px] rounded-3xl shadow-xl text-center overflow-hidden bg-white/80 backdrop-blur-xl">
             <div className="pt-10 pb-4">
-              <h2 className="text-4xl font-bold text-[#E07502]">
+              <h2 className=" font-bold text-[#E07502]">
                 จะไปจริงๆหรอ Meow
               </h2>
 

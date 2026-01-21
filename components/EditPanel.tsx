@@ -1,15 +1,14 @@
 "use client";
 
 import { useState } from "react";
-import { supabase} from "@/lib/supabase-client";
+import { supabase } from "@/lib/supabase-client";
 
-// ตรวจสอบให้แน่ใจว่า Interface Profile มี email
 interface Profile {
   id: string;
   username: string;
   bio?: string;
   avatar_url?: string;
-  email: string; // จำเป็นต้องมี email สำหรับแสดงผล
+  email: string;
   gender?: string;
   birthdate?: string;
 }
@@ -17,28 +16,80 @@ interface Profile {
 interface EditPanelProps {
   profile: Profile;
   setShowEdit: (show: boolean) => void;
+ selectedFile: File | null;
+  setProfile: (profile: Profile) => void;
 }
 
-export default function EditPanel({ profile, setShowEdit }: EditPanelProps) {
- 
+const RadioOption = ({ 
+  label, 
+  value, 
+  currentValue, 
+  onChange 
+}: { 
+  label: string; 
+  value: string; 
+  currentValue: string; 
+  onChange: (val: string) => void;
+}) => {
+  // 1. เช็คตรงนี้เลยว่าถูกเลือกอยู่ไหม
+  const isSelected = currentValue === value;
 
+  return (
+    <label className="inline-flex items-center cursor-pointer mr-6 relative group select-none">
+      <input
+        type="radio"
+        name="gender"
+        value={value}
+        checked={isSelected}
+        onChange={() => onChange(value)}
+        className="sr-only" // ไม่ต้องใช้ peer แล้ว
+      />
+      
+      {/* กรอบสี่เหลี่ยมมน */}
+      <div className={`
+        w-6 h-6 border-2 rounded-xl flex items-center justify-center transition-all duration-200
+        ${isSelected ? 'border-[#F16527]' : 'border-[#F16527]'}
+      `}>
+        {/* วงกลมส้มข้างใน */}
+        <div className={`
+          w-4 h-4 bg-[#FA9529] rounded-full shadow-sm
+          transition-transform duration-200 ease-out
+          ${isSelected ? 'scale-90' : 'scale-0'} 
+        `}></div>
+      </div>
+      
+      {/* ตัวหนังสือ */}
+      <span className={`ml-2 font-medium transition-colors ${isSelected ? 'text-gray-700' : 'text-gray-700'}`}>
+        {label}
+      </span>
+    </label>
+  );
+};
+
+export default function EditPanel({ profile, setShowEdit,  setProfile, selectedFile }: EditPanelProps) {
+  // กำหนดค่าเริ่มต้น State
   const [formData, setFormData] = useState({
-    username: profile.username,
+    username: profile.username || "",
     bio: profile.bio || "",
-    gender: profile.gender || "other", // ค่า default ควรตรงกับ value ของ radio
+    gender: profile.gender || "other", // ค่า default ต้องมี
     birthdate: profile.birthdate || "",
   });
+  
+
+
 
   const [loading, setLoading] = useState(false);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  
+  // ฟังก์ชันเปลี่ยนค่า Text Input
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
+
+  // ฟังก์ชันเปลี่ยนค่า Gender (แยกออกมาให้ชัดเจน)
+  const handleGenderChange = (val: string) => {
+    setFormData((prev) => ({ ...prev, gender: val }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -46,66 +97,64 @@ export default function EditPanel({ profile, setShowEdit }: EditPanelProps) {
     setLoading(true);
 
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update(formData)
-        .eq("id", profile.id);
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
 
-      if (error) {
-        console.error("Error updating profile:", error);
-        alert("ไม่สามารถอัปเดตโปรไฟล์ได้");
+      if (!token) throw new Error("No session found");
+
+      const sendData = new FormData();
+      sendData.append("id", profile.id);
+      sendData.append("username", formData.username);
+      sendData.append("bio", formData.bio);
+      sendData.append("gender", formData.gender);
+      sendData.append("birthdate", formData.birthdate);
+      if (selectedFile) {
+            // ต้องชื่อ "avatar_url" ให้ตรงกับที่ Backend รอรับ
+            sendData.append("avatar_url", selectedFile);
+            console.log("📦 กำลังส่งไฟล์รูป:", selectedFile.name);
+      }
+      
+     
+
+      console.log("Sending data...", Object.fromEntries(sendData)); // เช็คดูว่าข้อมูลถูกส่งมั้ย
+
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/profile/update`, {
+        method: "PUT",
+        headers: { "Authorization": `Bearer ${token}` },
+        body: sendData,
+      });
+
+      const result = await res.json();
+
+      if (res.ok) {
+       
+        // 🔥 บังคับ Reload หน้าเว็บเพื่อให้ข้อมูลอัปเดตแน่นอน 100%
+        window.location.reload(); 
       } else {
-        alert("อัปเดตโปรไฟล์สำเร็จ");
-        setShowEdit(false);
-        // Refresh page to see changes
-        window.location.reload();
+        alert("บันทึกไม่สำเร็จ: " + (result.message || "Unknown Error"));
       }
     } catch (err) {
-      console.error("Error:", err);
-      alert("เกิดข้อผิดพลาด");
+      console.error(err);
+      alert("เกิดข้อผิดพลาดในการเชื่อมต่อ");
     } finally {
       setLoading(false);
     }
   };
 
-  // Class สำหรับ Input ทั่วไปเพื่อให้เหมือนกันหมด
-  const inputBaseClass = "w-full bg-gray-100 border-none rounded-xl px-4 py-3 text-gray-700 focus:ring-2 focus:ring-cyan-200 outline-none transition-shadow";
-  const labelBaseClass = "text-slate-600 font-medium text-base md:text-lg";
-
-  // Custom Radio Button Component (เพื่อให้ได้สไตล์สีส้มตามภาพ)
-  const CustomRadio = ({ label, value }: { label: string; value: string }) => (
-    <label className="inline-flex items-center cursor-pointer mr-6 relative">
-      <input
-        type="radio"
-        name="gender"
-        value={value}
-        checked={formData.gender === value}
-        onChange={handleChange}
-        className="peer sr-only" // ซ่อน radio input จริงๆ
-      />
-      {/* วงกลมด้านนอก */}
-      <div className="w-6 h-6 border-2 border-orange-400 rounded-full flex items-center justify-center peer-checked:border-orange-500 transition-all">
-        {/* จุดสีส้มด้านใน (แสดงเมื่อ checked) */}
-        <div className="w-3 h-3 bg-orange-500 rounded-full scale-0 peer-checked:scale-100 transition-transform"></div>
-      </div>
-      <span className="ml-2 text-gray-700">{label}</span>
-    </label>
-  );
+  const inputBaseClass = "w-full bg-gray-100 border-none rounded-xl px-4 py-3 text-gray-700  outline-none transition-shadow";
+  const labelBaseClass = "text-slate-600 font-bold text-base md:text-lg";
 
   return (
-    // Container ปรับให้กว้างขึ้น และ padding เหมาะสม
-    <div className="bg-white rounded-[2rem] w-full max-w-2xl p-8 md:p-12 shadow-sm">
-      <h2 className="text-3xl font-bold text-slate-700 mb-10">ข้อมูลของฉัน</h2>
+    <div className="bg-white rounded-[0.5rem] w-full max-w-2xl p-8 md:p-12 border border-white shadow-[0_20px_50px_rgba(0,0,0,0.1)] ml-14">
+      <h2 className="text-3xl font-black text-slate-700 mb-10">ข้อมูลของฉัน</h2>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
+      <form onSubmit={handleSubmit} className="space-y-8">
+
         
-        {/* Grid Layout: Label อยู่ซ้าย (กว้าง fixed), Input อยู่ขวา (ยืดเต็มที่) */}
         
         {/* Username */}
-        <div className="grid grid-cols-1 md:grid-cols-[160px_1fr] items-center gap-4">
-          <label className={labelBaseClass}>
-            ชื่อผู้ใช้ :
-          </label>
+        <div className="grid grid-cols-1 md:grid-cols-[180px_1fr] items-center gap-4">
+          <label className={labelBaseClass}>ชื่อผู้ใช้ :</label>
           <input
             type="text"
             name="username"
@@ -116,73 +165,87 @@ export default function EditPanel({ profile, setShowEdit }: EditPanelProps) {
           />
         </div>
 
-        {/* Email (Read Only) */}
-        <div className="grid grid-cols-1 md:grid-cols-[160px_1fr] items-center gap-4">
-          <label className={labelBaseClass}>
-            อีเมล :
-          </label>
+        {/* Email */}
+        <div className="grid grid-cols-1 md:grid-cols-[180px_1fr] items-center gap-4">
+          <label className={labelBaseClass}>อีเมล :</label>
           <input
             type="email"
             value={profile.email}
             readOnly
-            className={`${inputBaseClass} text-gray-500 cursor-default`} // สีจางลงเล็กน้อยเพราะแก้ไขไม่ได้
+            className={`${inputBaseClass} text-gray-400 cursor-not-allowed bg-gray-50`}
           />
         </div>
 
-        {/* Gender (Custom Radio Buttons) */}
-        <div className="grid grid-cols-1 md:grid-cols-[160px_1fr] items-center gap-4">
-          <label className={labelBaseClass}>
-            เพศ :
-          </label>
+        {/* Gender - แก้แล้ว กดติดแน่นอน */}
+        <div className="grid grid-cols-1 md:grid-cols-[180px_1fr] items-center gap-4">
+          <label className={labelBaseClass}>เพศ :</label>
           <div className="flex flex-wrap items-center py-2">
-            <CustomRadio label="ชาย" value="male" />
-            <CustomRadio label="หญิง" value="female" />
-            <CustomRadio label="อื่นๆ" value="other" />
+            <RadioOption 
+              label="ชาย" 
+              value="male" 
+              currentValue={formData.gender} 
+              onChange={handleGenderChange} 
+            />
+            <RadioOption 
+              label="หญิง" 
+              value="female" 
+              currentValue={formData.gender} 
+              onChange={handleGenderChange} 
+            />
+            <RadioOption 
+              label="อื่นๆ" 
+              value="other" 
+              currentValue={formData.gender} 
+              onChange={handleGenderChange} 
+            />
           </div>
         </div>
 
         {/* Birthdate */}
-        <div className="grid grid-cols-1 md:grid-cols-[160px_1fr] items-center gap-4">
-          <label className={labelBaseClass}>
-            วัน/เดือน/ปี เกิด :
-          </label>
-          {/* Browser ส่วนใหญ่จะมี icon ปฏิทินให้อยู่แล้วสำหรับ type="date" */}
+        <div className="grid grid-cols-1 md:grid-cols-[180px_1fr] items-center gap-4">
+          <label className={labelBaseClass}>วัน/เดือน/ปี เกิด :</label>
           <input
             type="date"
             name="birthdate"
             value={formData.birthdate}
             onChange={handleChange}
-            className={`${inputBaseClass} appearance-none`} // appearance-none might help on some browsers styles
-            style={{ colorScheme: 'light' }} // บังคับ icon สีเข้มบนพื้นสว่าง
+            className={inputBaseClass}
           />
         </div>
 
-        {/* Bio (Textarea) */}
-        <div className="grid grid-cols-1 md:grid-cols-[160px_1fr] items-start gap-5">
-          <label className={`${labelBaseClass} pt-3`}>
-            เขียนคำอธิบายของคุณ :
-          </label>
+        {/* Bio */}
+        <div className="grid grid-cols-1 md:grid-cols-[180px_1fr] items-start gap-4">
+          <label className={`${labelBaseClass} pt-3`}>คำอธิบายของคุณ :</label>
           <textarea
             name="bio"
             value={formData.bio}
             onChange={handleChange}
             rows={4}
             className={`${inputBaseClass} resize-none h-32`}
-            placeholder="รักสัตว์ทุกชนิดบนโลกเลย"
+            placeholder="เล่าเรื่องราวของคุณสักนิด..."
           />
         </div>
 
-        {/* Submit Button */}
-        <div className="flex justify-center pt-8">
-          <button
-            type="submit"
-            disabled={loading}
-            // Gradient สีฟ้า->เขียวมิ้นต์, ทรงแคปซูล (rounded-full), ปุ่มกว้าง
-            className="bg-gradient-to-r from-cyan-400 to-teal-300 text-white text-lg font-semibold py-3 px-24 rounded-full hover:shadow-md transition-all disabled:opacity-70"
-          >
-            {loading ? "กำลังบันทึก..." : "บันทึก"}
-          </button>
-        </div>
+<div className="flex flex-col md:flex-row justify-center items-center gap-4 pt-3">
+  {/* ปุ่มบันทึก */}
+  <button
+    type="submit"
+    disabled={loading}
+    className=" bg-[#FA9529] text-white font-black py-3 px-13 rounded-xl shadow-lg  "
+  >
+    {loading ? "กำลังบันทึก..." : "บันทึก"}
+  </button>
+
+  {/* ปุ่มยกเลิก (ย้ายเข้ามาข้างใน div นี้) */}
+  <button
+    type="button"
+    onClick={() => setShowEdit(false)}
+    className="px-12 py-3 rounded-xl font-bold text-[#425B80]  border border-white shadow-lg"
+  >
+    ยกเลิก
+  </button>
+</div>
+       
       </form>
     </div>
   );

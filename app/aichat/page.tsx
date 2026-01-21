@@ -4,6 +4,8 @@ import { Bot, Heart, ImageIcon, Send, Smile, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import EmojiPicker, { EmojiClickData } from "emoji-picker-react";
+import { createBrowserClient } from '@/lib/supabase-client';
+
 
 // --- Interface ---
 interface IPetNameSuggestion {
@@ -30,7 +32,16 @@ interface IPetNameRecord {
 interface IFavoriteResponse {
   id: number;
   name_id: number;
-  pet_names: IPetNameRecord | IPetNameRecord[]; // Supabase Join มักส่งมาเป็น Array หรือ Object
+  pet_names: IPetNameRecord | IPetNameRecord[]; 
+}
+
+interface Profile {
+  id: string;
+  username: string | null;   
+  avatar_url: string | null; 
+  bio?: string | null;      
+  gender?: string | null;
+  birthdate?: string | null;
 }
 
 // --- AI Response Parser (ปรับให้ดึง Tag แม่นขึ้น) ---
@@ -68,13 +79,13 @@ const parseAIResponse = (text: string | undefined): IPetNameSuggestion[] => {
     }
   });
 
-  // คืนค่าแค่ 3 ชื่อตามที่มึงต้องการ
+  // คืนค่าแค่ 3 ชื่อตามที่ต้องการ
   return suggestions.slice(0, 3);
 };
 
 const NameCard = ({ nameTh, nameEn, meaning, tag, isAlreadyLiked, onLike }: IPetNameSuggestion & { isAlreadyLiked: boolean, onLike: () => void }) => {
   
-  // 🔥 คืนค่า Logic Tag ดั้งเดิมของมึง: ต้องมีคำว่า "แนะนำ"
+  // 🔥 คืนค่า Logic Tag ดั้งเดิม ต้องมีคำว่า "แนะนำ"
   const processTags = (tagStr: string) => {
     if (!tagStr) return ["แนะนำ"];
     return tagStr
@@ -101,7 +112,7 @@ const NameCard = ({ nameTh, nameEn, meaning, tag, isAlreadyLiked, onLike }: IPet
             {displayTags}
           </span>
 
-          {/* 🔥 คืนค่าปุ่มกลมๆ สีแดง/เทา อันดั้งเดิมของมึง ห้ามหายไปไหนอีก! */}
+          {/* 🔥 คืนค่าปุ่มกลมๆ สีแดง/เทา อันดั้งเดิมของ ห้ามหายไปไหนอีก! */}
 <button 
             onClick={(e) => { e.preventDefault(); onLike(); }} 
             className={`w-9 h-9 flex items-center justify-center rounded-full transition-all active:scale-90 ${
@@ -139,20 +150,45 @@ export default function ChatbotUI() {
   const [favorites, setFavorites] = useState<IPetNameSuggestion[]>([]);
   const [likedNames, setLikedNames] = useState<Set<string>>(new Set());
   const [likedIds, setLikedIds] = useState<number[]>([]);
+const [profile, setProfile] = useState<Profile | null>(null);
+
+  useEffect(() => {
+    const fetchProfile = async () => {
+      // 3.1 หา User ที่ Login อยู่
+      const { data: { user } } = await supabase.auth.getUser();
+      
+      if (user) {
+        // 3.2 ดึงข้อมูลจากตาราง profiles
+        const { data, error } = await supabase
+          .from('profiles') // เช็คชื่อตารางให้ตรง (profiles หรือ users)
+          .select('*')
+          .eq('id', user.id)
+          .single();
+
+        if (data) {
+          setProfile(data); // ✅ เก็บเข้า State แล้ว!
+          setUsername(data.username || "User"); // อัปเดตชื่อให้ตรงด้วยเลย
+        }
+      }
+    };
+
+    fetchProfile();
+  }, []);
+  
 
   // Favorite Logic
   const toggleFavorite = async (suggestion: IPetNameSuggestion) => {
   const { data: { user } } = await supabase.auth.getUser();
 
   if (!user) {
-    alert("กรุณาเข้าสู่ระบบก่อนมึง!");
+    alert("กรุณาเข้าสู่ระบบก่อน!");
     return;
   }
 
   const userId = user.id;
 
   try {
-    // 1. บันทึกลง pet_names (Logic เดิมมึงเป๊ะ)
+    // 1. บันทึกลง pet_names (Logic เดิม)
     const { data: petData, error: petError } = await supabase
       .from("pet_names")
       .upsert(
@@ -205,7 +241,7 @@ export default function ChatbotUI() {
       console.log("Like เรียบร้อย");
     }
   } catch (err) {
-    console.error("เกิดข้อผิดพลาดมึง!: ", err);
+    console.error("เกิดข้อผิดพลาด!: ", err);
   }
 };
 
@@ -286,7 +322,7 @@ export default function ChatbotUI() {
         data: { session },
       } = await supabase.auth.getSession();
 
-      // ✅ กุเซ็ต System Instruction ตรงนี้เลยเพื่อให้ AI ทำตามเงื่อนไขมึง
+      // ✅ กุเซ็ต System Instruction ตรงนี้เลยเพื่อให้ AI ทำตามเงื่อนไข
       let messageToAI = textToSend;
       if (textToSend === "ขอชื่อแนะนำ 3 ชื่อ") {
         messageToAI =
@@ -333,7 +369,7 @@ export default function ChatbotUI() {
           suggestions: suggestions.length > 0 ? suggestions : undefined,
         },
       ]);
-
+      
       setHistory((prev) => [
         ...prev,
         { role: "user", parts: [{ text: textToSend }] },
@@ -371,6 +407,8 @@ export default function ChatbotUI() {
     if (saved) setFavorites(JSON.parse(saved));
   }, []);
 
+
+  
   useEffect(() => {
     const hour = new Date().getHours();
     if (hour >= 5 && hour < 12) setGreeting("Good Morning");
@@ -406,7 +444,7 @@ export default function ChatbotUI() {
           </h2>
           <p className="text-slate-500 text-lg">
             What s on your{" "}
-            <span className="text-orange-500 font-bold underline">mind?</span>
+            <span className="text-orange-500 font-bold ">mind?</span>
           </p>
         </div>
         <div className="relative w-screen left-1/2 right-1/2 -ml-[50vw] -mr-[50vw] bottom-20">
@@ -422,7 +460,7 @@ export default function ChatbotUI() {
         </div>
       </div>
 
-      <div className="w-[500vh] max-w-7xl h-[140vh] bg-white shadow-2xl rounded-[1rem] overflow-hidden flex flex-col border border-slate-50 relative mt-[-90px] z-10">
+      <div className="w-[480vh] max-w-7xl h-[140vh] bg-white shadow-2xl rounded-[1rem] overflow-hidden flex flex-col border border-slate-50 relative mt-[-90px] z-10">
         <div
           ref={scrollRef}
           className="flex-1 overflow-y-auto p-10 space-y-10 bg-[#F8FAFC]/50 no-scrollbar"
@@ -432,7 +470,7 @@ export default function ChatbotUI() {
             <p className="text-[#4A628A] text-sm font-medium opacity-80">
               คุยกับ AI เพื่อขอคำแนะนำเกี่ยวกับสัตว์เลี้ยง
             </p>
-            <div className="w-[170vh] border-b border-slate-200 mt-4 mx-auto"></div>
+            <div className="w-screen ml-[calc(50%-50vw)] border-b border-slate-200 mt-4"></div>
           </div>
 
           <div className="px-6 py-6 space-y-10">
@@ -462,8 +500,8 @@ export default function ChatbotUI() {
                       <Bot size={24} className="text-white" />
                     ) : (
                       <img
-                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"
-                        className="w-10 h-10"
+                       src={profile?.avatar_url || "/aichat.png"}
+                        className="w-11 h-11 rounded-full object-cover"
                       />
                     )}
                   </div>
@@ -583,7 +621,7 @@ export default function ChatbotUI() {
               <button
                 key={i}
                 onClick={() => handleSend(item.label)}
-                className="min-w-[378px] h-[100px] bg-[#F1F5F9] p-6 rounded-[1rem] flex flex-col justify-between items-start hover:bg-white hover:shadow-md border border-transparent hover:border-slate-100 transition-all"
+                className="min-w-[378px] h-[100px] bg-[#F1F5F9] p-6 rounded-[1rem] flex flex-col justify-between items-start hover:bg-gray-200  border border-transparent hover:border-slate-100 transition-all"
               >
                 <span className="text-sm font-bold text-[#4A628A]">
                   {item.label}

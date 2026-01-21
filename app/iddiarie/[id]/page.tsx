@@ -36,11 +36,20 @@ export default function DiaryDetailPage() {
     loadDiary();
   }, [diaryId]);
 
-  const loadDiary = async () => {
-    setIsLoading(true);
-    try {
-      const res = await fetch(`${API_URL}/api/diaries/detail/${diaryId}`);
-      const data = await res.json();
+ const loadDiary = async () => {
+  setIsLoading(true);
+  try {
+    const token = localStorage.getItem("access_token"); // ดึง token มา
+    const headers: Record<string, string> = {};
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+
+    const res = await fetch(`${API_URL}/api/diaries/detail/${diaryId}`, {
+headers: {
+    Authorization: `Bearer ${token}` // ✅ ต้องส่งไปเพื่อให้หลังบ้านรู้ว่าเป็นใคร
+  }
+    });
+
+    const data = await res.json();
       setDiary(data);
       
       // ✅ 2. Setup ข้อมูลเข้า Form (จัดการฟอร์แมตวันที่ให้ input date อ่านได้)

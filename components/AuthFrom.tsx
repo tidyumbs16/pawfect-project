@@ -1,35 +1,106 @@
-'use client';
+"use client";
 
-
-import { useState, useEffect } from 'react';
-import Image from 'next/image';
+import { useState, useEffect, useRef } from "react";
+import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
-import { supabase  } from "@/lib/supabase-client";
+import { supabase } from "@/lib/supabase-client";
 import { useRouter } from "next/navigation";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001'
+const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
 const AuthForm = () => {
   const router = useRouter();
 
+  // เพิ่มสถานะ 'reset-password'
+  const [view, setView] = useState<string>("login");
 
-  const [isLogin, setIsLogin] = useState(true);
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
+
+  // State สำหรับหน้า Reset Password
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+
   const [loading, setLoading] = useState(false);
 
-  useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      if (data.session) router.push('/');
-    });
-  }, [supabase, router]);
+  // OTP State
+  const [otp, setOtp] = useState<string[]>(new Array(6).fill(""));
+  const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const [timer, setTimer] = useState(60);
 
-  const toggleMode = () => {
-    setIsLogin(!isLogin);
-    setEmail('');
-    setPassword('');
-    setName('');
+  const [rememberMe, setRememberMe] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+
+  useEffect(() => {
+    // เช็ค Session (ถ้ามี Session อยู่แล้ว และไม่ได้กำลัง Reset Password ให้เด้งไปหน้าแรก)
+    supabase.auth.getSession().then(({ data }) => {
+      if (data.session && view !== "reset-password") {
+        // router.push('/'); // คอมเม้นไว้ก่อน เผื่อเทส
+      }
+    });
+  }, [router, view]);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (view === "verify" && timer > 0) {
+      interval = setInterval(() => {
+        setTimer((prev) => prev - 1);
+      }, 1000);
+    }
+    return () => clearInterval(interval);
+  }, [view, timer]);
+
+  const handleOtpChange = (index: number, value: string) => {
+    if (isNaN(Number(value))) return;
+    const newOtp = [...otp];
+    newOtp[index] = value.substring(value.length - 1);
+    setOtp(newOtp);
+    if (value && index < 5 && otpInputRefs.current[index + 1]) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (
+    index: number,
+    e: React.KeyboardEvent<HTMLInputElement>,
+  ) => {
+    if (
+      e.key === "Backspace" &&
+      !otp[index] &&
+      index > 0 &&
+      otpInputRefs.current[index - 1]
+    ) {
+      otpInputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleResendCode = async () => {
+    setTimer(60);
+    const { error } = await supabase.auth.signInWithOtp({
+      email,
+      options: { shouldCreateUser: false },
+    });
+    if (error) alert("ส่งไม่ผ่าน: " + error.message);
+    else alert("ส่งรหัสใหม่ไปแล้ว! กรุณาเช็คอีเมล");
+  };
+
+  const switchView = (newView: string) => {
+    setView(newView);
+    if (newView === "login") {
+      setEmail("");
+      setPassword("");
+      setName("");
+    }
+    setShowPassword(false);
+    if (newView === "verify") {
+      setTimer(59);
+      setOtp(new Array(6).fill(""));
+    }
+    if (newView === "reset-password") {
+      setNewPassword("");
+      setConfirmPassword("");
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -37,53 +108,111 @@ const AuthForm = () => {
     setLoading(true);
 
     try {
-      if (isLogin) {
-        // ✅ 1. ยิงไปที่ Bun Backend
-        console.log("Jumping to:", `${API_URL}/api/auth/login`);
+      // 1. FORGOT -> ส่ง OTP
+      if (view === "forgot") {
+        const { error } = await supabase.auth.signInWithOtp({
+          email,
+          options: { shouldCreateUser: false },
+        });
+        setLoading(false);
+        if (error) {
+          alert("Error: " + error.message);
+        } else {
+          switchView("verify");
+        }
+        return;
+      }
+
+      // 2. VERIFY OTP -> ตรวจสอบเลข
+      if (view === "verify") {
+        const token = otp.join("");
+        if (token.length !== 6) {
+          alert("Please enter a complete 6-digit code.");
+          setLoading(false);
+          return;
+        }
+
+        const { data, error } = await supabase.auth.verifyOtp({
+          email,
+          token,
+          type: "email",
+        });
+
+        setLoading(false);
+
+        if (error) {
+          alert("Verification failed: " + error.message);
+        } else {
+          // ✅ สำเร็จ! OTP ถูกต้อง -> ไปหน้าตั้งรหัสใหม่
+          switchView("reset-password");
+        }
+        return;
+      }
+
+      // 3. RESET PASSWORD -> ตั้งรหัสใหม่ (เพิ่มส่วนนี้เข้ามา)
+      if (view === "reset-password") {
+        if (newPassword !== confirmPassword) {
+          alert("Passwords do not match!");
+          setLoading(false);
+          return;
+        }
+
+        // ใช้ updateUser เพราะตอน verifyOtp ผ่าน user จะอยู่ในสถานะ logged in แล้ว
+        const { error } = await supabase.auth.updateUser({
+          password: newPassword,
+        });
+
+        setLoading(false);
+
+        if (error) {
+          alert("Failed to reset password: " + error.message);
+        } else {
+          alert("Password updated successfully! Please login again.");
+          // Logout เพื่อให้ user login ใหม่ด้วยรหัสใหม่ (หรือจะ redirect เข้าเว็บเลยก็ได้)
+          await supabase.auth.signOut();
+          switchView("login");
+        }
+        return;
+      }
+
+      // 4. LOGIN
+      if (view === "login") {
         const res = await fetch(`${API_URL}/api/auth/login`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ email, password }),
         });
-
         const data = await res.json();
         setLoading(false);
-
         if (!data.ok) {
           alert(data.message || "Login failed");
           return;
         }
-
-        // ✅ 2. สำคัญมาก: รับ Session จาก Backend มาฝังลง Browser
-        // (เพื่อให้ Supabase ฝั่ง Client รู้ว่าเรา Login แล้ว)
         if (data.session) {
           const { error } = await supabase.auth.setSession(data.session);
           if (error) throw error;
         }
-
-        router.push("/");
+        if (rememberMe) localStorage.setItem("savedEmail", email);
+      window.location.href = "/";
         return;
       }
 
-      // --- REGISTER ---
-      // ✅ 3. ยิงไปที่ Bun Backend
-      const res = await fetch(`${API_URL}/api/auth/register`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password, username: name }),
-      });
-
-      const data = await res.json();
-      setLoading(false);
-
-      if (!data.success) {
-         alert("สมัครสมาชิกไม่สำเร็จ: " + (data.message || "Unknown error"));
-         return;
+      // 5. REGISTER
+      if (view === "register") {
+        const res = await fetch(`${API_URL}/api/auth/register`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, password, username: name }),
+        });
+        const data = await res.json();
+        setLoading(false);
+        if (!data.success) {
+          alert("สมัครสมาชิกไม่สำเร็จ: " + (data.message || "Unknown error"));
+          return;
+        }
+        alert("สมัครสำเร็จ! โปรดเข้าสู่ระบบ");
+        switchView("login");
       }
-
-      alert("สมัครสำเร็จ! โปรดเข้าสู่ระบบ");
-      setIsLogin(true);
-
     } catch (err) {
       console.error(err);
       setLoading(false);
@@ -91,154 +220,425 @@ const AuthForm = () => {
     }
   };
 
+  // Helper Titles
+  const getHeaderTitle = () => {
+    if (view === "reset-password") return "Reset Password"; //
+    if (view === "verify") return "Enter Verification Code";
+    if (view === "forgot") return "Trouble Logging In?";
+    if (view === "login") return "Welcome Back!";
+    return "Yay, We Love Your Pets!";
+  };
+
+  const getSubTitle = () => {
+    if (view === "reset-password")
+      return "You're all set! Enter your desired new password and confirm it below."; //
+    if (view === "verify")
+      return "We've sent a 6-digit code to your email address. Please enter the code below to proceed.";
+    if (view === "forgot")
+      return "No worries! Enter your email and we'll send you a code.";
+    return "Please give us basic information Thanks!";
+  };
+
   return (
-    <div className="flex items-center justify-center mt-10 ">
-
-      {/* FORM BOX */}
-      <div className="w-full max-w-md 
-        p-10 pt-8
-        bg-gradient-to-b from-[#FFD361] to-[#FF8A00]
-        rounded-3xl shadow-xl 
-        min-h-[560px]
-        flex flex-col justify-start">
-
+    <div className="flex items-center justify-center mt-10">
+      <div className="w-full max-w-md p-10 pt-8 bg-gradient-to-b from-[#FFD361] to-[#FF8A00] rounded-3xl shadow-xl min-h-[560px] flex flex-col justify-start relative overflow-hidden transition-all duration-300">
         {/* HEAD */}
-        <div className="text-center mb-6">
-          <h1 className="text-4xl font-semibold text-white leading-tight">
-            {isLogin ? 'Welcome Back!' : 'Yay, We Love Your Pets!'}
-          </h1>
-          <p className="mt-2 text-white/90 text-sm">
-            Please give us basic information Thanks!
-          </p>
+        <div className="text-center mb-6 z-10">
+          <motion.h1
+            key={view}
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-3xl font-semibold text-white leading-tight"
+          >
+            {getHeaderTitle()}
+          </motion.h1>
+          <motion.p
+            key={`${view}-sub`}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="mt-4 text-white/90 text-sm px-2 leading-relaxed"
+          >
+            {getSubTitle()}
+          </motion.p>
         </div>
 
         {/* FORM */}
-        <form className="space-y-4" onSubmit={handleSubmit}>
-
-          {/* Username animation */}
-          <motion.div
-            layout="position"
-            transition={{ layout: { type: "spring", stiffness: 200, damping: 20 } }}
-            className="relative min-h-[60px] "
-          >
-            <AnimatePresence>
-              {!isLogin && (
-                <motion.div
-                  key="username-input"
-                  initial={{ opacity: 0, y: -10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -10 }}
-                  transition={{ type: "spring", stiffness: 180, damping: 18 }}
-                  className="relative"
-                >
-                  <input
-                    type="text"
-                    placeholder="Username"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full py-3.5 pl-5 pr-12 bg-[#FFC88D] 
-                      rounded-full text-white placeholder-white/70 "
-                    required
-                  />
-
-                  {/* USER ICON */}
-                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-                    viewBox="0 0 24 24" fill="#ffffff"
-                    className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none">
+        <form
+          className="space-y-4 z-10 flex flex-col flex-1"
+          onSubmit={handleSubmit}
+        >
+          {/* Username (Register Only) */}
+          <AnimatePresence>
+            {view === "register" && (
+              <motion.div
+                key="username-input"
+                initial={{ opacity: 0, y: -10, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: "auto" }}
+                exit={{ opacity: 0, y: -10, height: 0 }}
+                className="relative overflow-hidden"
+              >
+                <div className="absolute left-4 top-3.5 pointer-events-none">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="#ffffff"
+                  >
                     <path d="M12 2a5 5 0 1 1 -5 5a5 5 0 0 1 5 -5z" />
                     <path d="M14 14a5 5 0 0 1 5 5v1a2 2 0 0 1 -2 2h-10a2 2 0 0 1 -2 -2v-1a5 5 0 0 1 5 -5h4z" />
                   </svg>
-                </motion.div>
-              )}
-            </AnimatePresence>
-          </motion.div>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Username"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full py-3.5 pl-12 pr-5 bg-[#FFC88D] rounded-full text-white placeholder-white/70 focus:outline-none mb-4"
+                  required
+                />
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-          {/* Email */}
-          <motion.div
-            layout="position"
-            transition={{ layout: { type: "spring", stiffness: 200, damping: 20 } }}
-            className="relative"
-          >
-            <input
-              type="email"
-              placeholder="Email Address"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full py-3.5 pl-5 pr-12 bg-[#FFC88D]
-              rounded-full text-white placeholder-white/70 rounded-"
-              required
-            />
+          {/* Email: Show everywhere EXCEPT Reset Password (verified user) & Verify */}
+          {view !== "verify" && view !== "reset-password" && (
+            <motion.div layout className="relative">
+              <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="#ffffff"
+                >
+                  <path d="M22 7.5v9.5a3 3 0 0 1 -3 3h-14a3 3 0 0 1 -3 -3v-9.5l10 6l10 -6z" />
+                  <path d="M19 4a3 3 0 0 1 3 3l-10 6l-10 -6a3 3 0 0 1 3 -3h14z" />
+                </svg>
+              </div>
+              <input
+                type="email"
+                placeholder={
+                  view === "forgot" ? "your.email@example" : "Email Address"
+                }
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className={`w-full py-3.5 pl-12 pr-5 rounded-full text-white placeholder-white/70 focus:outline-none transition-colors 
+                  ${view === "forgot" ? "bg-white/20 border-2 border-white/30" : "bg-[#FFC88D]"}`}
+                required
+              />
+            </motion.div>
+          )}
 
-            {/* EMAIL ICON */}
-            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"
-              viewBox="0 0 24 24" fill="#ffffff"
-              className="absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none">
-              <path d="M22 7.5v9.5a3 3 0 0 1 -3 3h-14a3 3 0 0 1 -3 -3v-9.5l10 6l10 -6z" />
-              <path d="M19 4a3 3 0 0 1 3 3l-10 6l-10 -6a3 3 0 0 1 3 -3h14z" />
-            </svg>
-          </motion.div>
+          {/* RESET PASSWORD INPUTS (New Password & Confirm) */}
+          {view === "reset-password" && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="space-y-4"
+            >
+              {/* New Password */}
+              <div className="relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="#ffffff"
+                  >
+                    <path d="M22 7.5v9.5a3 3 0 0 1 -3 3h-14a3 3 0 0 1 -3 -3v-9.5l10 6l10 -6z" />
+                    <path d="M19 4a3 3 0 0 1 3 3l-10 6l-10 -6a3 3 0 0 1 3 -3h14z" />
+                  </svg>
+                  {/* Note: Icon ตามดีไซน์ */}
+                </div>
+                <input
+                  type="password"
+                  placeholder="New Password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className="w-full py-3.5 pl-12 pr-5 bg-[#FFC88D] rounded-full text-white placeholder-white/70 focus:outline-none"
+                  required
+                />
+              </div>
+              {/* Confirm Password */}
+              <div className="relative">
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
+                  <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="20"
+                    height="20"
+                    viewBox="0 0 24 24"
+                    fill="#ffffff"
+                  >
+                    <path d="M12 2a5 5 0 0 1 5 5v3a3 3 0 0 1 3 3v6a3 3 0 0 1 -3 3h-10a3 3 0 0 1 -3 -3v-6a3 3 0 0 1 3 -3v-3a5 5 0 0 1 5 -5m0 12a2 2 0 0 0 -1.995 1.85l-.005 .15a2 2 0 1 0 2 -2m0 -10a3 3 0 0 0 -3 3v3h6v-3a3 3 0 0 0 -3 -3" />
+                  </svg>
+                </div>
+                <input
+                  type="password"
+                  placeholder="Confirm New Password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full py-3.5 pl-12 pr-5 bg-[#FFC88D] rounded-full text-white placeholder-white/70 focus:outline-none"
+                  required
+                />
+              </div>
+            </motion.div>
+          )}
 
-          {/* Password */}
-          <motion.div
-            layout="position"
-            transition={{ layout: { type: "spring", stiffness: 200, damping: 20 } }}
-            className="relative"
-          >
-            <input
-              type="password"
-              placeholder="Password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full py-3.5 pl-5 pr-12 bg-[#FFC88D]
-              rounded-full rou text-white placeholder-white/70"
-              required
-            />
+          {/* Password (Login & Register Only) */}
+          <AnimatePresence>
+            {(view === "login" || view === "register") && (
+              <motion.div
+                key="password-input"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: "auto" }}
+                exit={{ opacity: 0, height: 0 }}
+                className="relative overflow-hidden"
+              >
+                <div className="pt-4">
+                  <div className="relative">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-white">
+                      <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="20"
+                        height="20"
+                        viewBox="0 0 24 24"
+                        fill="#ffffff"
+                      >
+                        <path d="M12 2a5 5 0 0 1 5 5v3a3 3 0 0 1 3 3v6a3 3 0 0 1 -3 3h-10a3 3 0 0 1 -3 -3v-6a3 3 0 0 1 3 -3v-3a5 5 0 0 1 5 -5m0 12a2 2 0 0 0 -1.995 1.85l-.005 .15a2 2 0 1 0 2 -2m0 -10a3 3 0 0 0 -3 3v3h6v-3a3 3 0 0 0 -3 -3" />
+                      </svg>
+                    </div>
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      placeholder="Password"
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      className="w-full py-3.5 pl-12 pr-12 bg-[#FFC88D] rounded-full text-white placeholder-white/70 focus:outline-none"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white transition-colors focus:outline-none"
+                    >
+                      {showPassword ? (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="22"
+                          height="22"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M9.88 9.88a3 3 0 1 0 4.24 4.24" />
+                          <path d="M10.73 5.08A10.43 10.43 0 0 1 12 5c7 0 10 7 10 7a13.16 13.16 0 0 1-1.67 2.68" />
+                          <path d="M6.61 6.61A13.526 13.526 0 0 0 2 12s3 7 10 7a9.74 9.74 0 0 0 5.39-1.61" />
+                          <line x1="2" x2="22" y1="2" y2="22" />
+                        </svg>
+                      ) : (
+                        <svg
+                          xmlns="http://www.w3.org/2000/svg"
+                          width="22"
+                          height="22"
+                          viewBox="0 0 24 24"
+                          fill="none"
+                          stroke="currentColor"
+                          strokeWidth="2"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                        >
+                          <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                          <circle cx="12" cy="12" r="3" />
+                        </svg>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-            {/* LOCK ICON */}
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="#ffffff" className="icon icon-tabler icons-tabler-filled icon-tabler-lock w-5 h-5 text-white absolute right-5 top-1/2 -translate-y-1/2 pointer-events-none"><path stroke="none" d="M0 0h24v24H0z" fill="none"/><path d="M12 2a5 5 0 0 1 5 5v3a3 3 0 0 1 3 3v6a3 3 0 0 1 -3 3h-10a3 3 0 0 1 -3 -3v-6a3 3 0 0 1 3 -3v-3a5 5 0 0 1 5 -5m0 12a2 2 0 0 0 -1.995 1.85l-.005 .15a2 2 0 1 0 2 -2m0 -10a3 3 0 0 0 -3 3v3h6v-3a3 3 0 0 0 -3 -3" /></svg>
-          </motion.div>
+          {/* OTP INPUTS (Verify Only) */}
+          {view === "verify" && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex justify-center gap-2 mb-4"
+            >
+              {otp.map((digit, index) => (
+                <input
+                  key={index}
+                  ref={(el) => {
+                    otpInputRefs.current[index] = el;
+                  }}
+                  type="text"
+                  maxLength={1}
+                  value={digit}
+                  onChange={(e) => handleOtpChange(index, e.target.value)}
+                  onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                  className="w-12 h-12 rounded-xl bg-white text-center text-xl font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-orange-500 shadow-sm"
+                />
+              ))}
+            </motion.div>
+          )}
 
-          {/* Submit */}
+          {/* Submit Button */}
           <motion.button
-            layout="position"
-            transition={{ layout: { type: "spring", stiffness: 200, damping: 20 } }}
+            layout
             type="submit"
-            className="w-full py-3 text-orange-600 bg-white rounded-full shadow-md hover:bg-yellow-50 transition"
+            className={`w-full py-3 rounded-full shadow-md transition font-bold text-lg mt-4
+              ${
+                view === "forgot" ||
+                view === "verify" ||
+                view === "reset-password"
+                  ? "bg-[#E65100] text-white hover:bg-[#BF360C]"
+                  : "bg-white text-orange-600 hover:bg-yellow-50"
+              }`}
             disabled={loading}
           >
-            {loading ? "Please wait..." : isLogin ? 'Login' : 'Register'}
+            {loading
+              ? "Please wait..."
+              : view === "login"
+                ? "Login"
+                : view === "register"
+                  ? "Register"
+                  : view === "forgot"
+                    ? "Send Verification Code"
+                    : view === "verify"
+                      ? "Verify"
+                      : "Save New Password"}
           </motion.button>
 
-          {/* TOGGLE */}
-          <motion.div
-            layout="position"
-            transition={{ layout: { type: "spring", stiffness: 200, damping: 20 } }}
-            className="text-center pt-2"
-          >
-            <button
-              type="button"
-              onClick={toggleMode}
-              className="text-sm text-white/90 hover:underline"
-            >
-              {isLogin ? "Don’t have an account? Register" : 'Already have an account? Login'}
-            </button>
-          </motion.div>
+          {/* Bottom Actions */}
+          <AnimatePresence mode="wait">
+            {/* VIEW: LOGIN */}
+            {view === "login" && (
+              <motion.div
+                key="login-actions"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex justify-between items-center text-white text-sm px-2 pt-1"
+              >
+                <label className="flex items-center cursor-pointer hover:opacity-80 transition">
+                  <div className="relative flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="peer h-4 w-4 cursor-pointer appearance-none rounded-sm border border-white checked:bg-blue-600 checked:border-blue-600 transition-all"
+                    />
+                    <svg
+                      className="absolute w-3 h-3 text-white hidden peer-checked:block pointer-events-none left-0.5"
+                      xmlns="http://www.w3.org/2000/svg"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    >
+                      <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                  </div>
+                  <span className="ml-2 font-medium">Remember Me</span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => switchView("forgot")}
+                  className="font-medium underline hover:text-white/80 transition focus:outline-none"
+                >
+                  Forgot Password?
+                </button>
+              </motion.div>
+            )}
 
+            {/* VIEW: FORGOT PASSWORD */}
+            {view === "forgot" && (
+              <motion.div
+                key="forgot-actions"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="text-center text-white text-sm pt-4"
+              >
+                <span>Wait, I remember now! </span>
+                <button
+                  type="button"
+                  onClick={() => switchView("login")}
+                  className="font-bold underline hover:text-white/80"
+                >
+                  Back to Login
+                </button>
+              </motion.div>
+            )}
+
+            {/* VIEW: VERIFY (OTP) */}
+            {view === "verify" && (
+              <motion.div
+                key="verify-actions"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="text-center text-white text-sm pt-6"
+              >
+                <p className="mb-2">Didn’t receive the code?</p>
+                {timer > 0 ? (
+                  <span className="opacity-80">
+                    Resend Code in 0:{timer < 10 ? `0${timer}` : timer}
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={handleResendCode}
+                    className="font-bold underline hover:text-white/80"
+                  >
+                    Resend Code
+                  </button>
+                )}
+              </motion.div>
+            )}
+
+            {view === "register" && <motion.div className="h-4" />}
+          </AnimatePresence>
+
+          {/* TOGGLE: Login/Register */}
+          {(view === "login" || view === "register") && (
+            <motion.div layout className="text-center pt-6 mt-auto">
+              <button
+                type="button"
+                onClick={() =>
+                  switchView(view === "login" ? "register" : "login")
+                }
+                className="text-white hover:underline focus:outline-none text-base"
+              >
+                <span className="opacity-90">
+                  {view === "login"
+                    ? "Don’t have an account? "
+                    : "Already have an account? "}
+                </span>
+                <span className="font-bold underline">
+                  {view === "login" ? "Register" : "Login"}
+                </span>
+              </button>
+            </motion.div>
+          )}
         </form>
-
       </div>
-
-      {/* DOG IMAGE */}
-      <div className=" ml-20">
+      <div className="ml-20 hidden lg:block">
         <Image
           src="/Dog_log.png"
-          alt="Dog wearing a hat"
+          alt="Dog"
           width={420}
           height={520}
-          className="object-contain "
+          className="object-contain"
+          priority
         />
       </div>
-
     </div>
   );
 };

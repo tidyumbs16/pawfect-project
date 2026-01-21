@@ -6,7 +6,7 @@ export function middleware(req: NextRequest) {
     .find((c) => c.name.includes("-auth-token"))
     ?.value;
 
-  const protectedRoutes = ["/profile", "/favorites", "/ranking"];
+  const protectedRoutes = ["/profile", "/favorites", "/aichat","/app/diary","/app/iddiarie/[id]"];
 
   const path = req.nextUrl.pathname;
   const isProtected = protectedRoutes.some((r) => path.startsWith(r));
@@ -21,5 +21,5 @@ export function middleware(req: NextRequest) {
 }
 
 export const config = {
-  matcher: ["/profile/:path*", "/favorites/:path*", ]
+  matcher: ["/profile/:path*", "/favorites/:path*", "/aichat/:path*","/diary/:path*","/iddiarie/[id]:path*"],
 };
