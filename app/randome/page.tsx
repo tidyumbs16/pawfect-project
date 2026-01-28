@@ -97,7 +97,7 @@ export default function PetNameGenerator() {
   const [isOpen, setIsOpen] = useState(false);
 
   const handleGenerate = async () => {
-    if (!petType || !traits) return alert("กรอกข้อมูลให้ครบก่อนมึง!");
+    if (!petType || !traits) return alert("กรอกข้อมูลให้ครบก่อนนะครับ!");
     setIsGenerating(true);
     try {
       const {
