@@ -21,7 +21,7 @@ pipeline {
         }
 
         stage('Parallel Quality Check') {
-            // รัน Test และ Lint ไปพร้อมๆ กัน ไม่ต้องรอกัน
+      
             parallel {
                 stage('Unit Test') {
                     steps {
@@ -30,7 +30,7 @@ pipeline {
                 }
                 stage('Lint Check') {
                     steps {
-                        // เช็ค Format โค้ด (ถ้ามึงมี) จะได้รู้ว่างานเนี๊ยบไหม
+                    
                         bat '"${BUN_PATH}" x next lint'
                     }
                 }
@@ -39,7 +39,7 @@ pipeline {
 
         stage('Quick Build') {
             steps {
-                // Next.js จะใช้ Cache จากรอบก่อนหน้าโดยอัตโนมัติถ้ามึงไม่ลบโฟลเดอร์ .next ทิ้ง
+              
                 bat '"${BUN_PATH}" x next build'
             }
         }
