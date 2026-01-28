@@ -1,10 +1,18 @@
 "use client";
 import React from 'react';
 import { Mail, Phone, MessageCircle, Facebook, Smartphone } from 'lucide-react';
+import { Mallanna } from "next/font/google";
+
+const mallanna = Mallanna({
+  weight: "400",
+  subsets: ["latin"],
+  display: "swap",
+});
+
 
 const Section5 = () => {
   return (
-    <section id="section5">
+    <section id="section5" className={mallanna.className}>
     <div className=" text-[#3E5481] relative w-full flex items-center bg-gradient-to-r from-[#FFA94D] from-20% via-[#56DEF3] to-[#BCEAD3] to-90% mt-50">
       
       <div className="hidden lg:flex absolute bottom-10 left-1/2 transform -translate-x-1/1 z-0 pointer-events-none items-center justify-center w-[450px] h-auto ms-35 ">
@@ -82,21 +90,21 @@ const Section5 = () => {
                 <input
                   type="text"
                   placeholder="Name"
-                  className="w-full bg-[#C3F4F0] border border-[#425B80] rounded-full px-6 py-3  placeholder-[#425B80] text-[#425B80] focus:outline-none focus:ring-2 focus:ring-[#00D9F5]"
+                  className="w-full bg-[#C3F4F0] border border-none rounded-full px-6 py-3  placeholder-[#425B80] text-[#425B80] focus:outline-none focus:none "
                 />
               </div>
-              <div>
+              <div> 
                 <input
                   type="email"
                   placeholder="Email"
-                  className="w-full bg-[#C3F4F0] border border-[#425B80] rounded-full px-6 py-3  placeholder-[#425B80] text-[#425B80] focus:outline-none focus:ring-2 focus:ring-[#00D9F5]"
+                  className="w-full bg-[#C3F4F0] border border-none rounded-full px-6 py-3  placeholder-[#425B80] text-[#425B80] focus:outline-none focus:none"
                 />
               </div>
               <div>
                 <textarea
                   placeholder="Message"
                   rows={5}
-                  className="w-full bg-[#C3F4F0] border border-[#425B80] rounded-[1.5rem] px-6 py-4 placeholder-[#425B80] text-[#425B80] focus:outline-none focus:ring-2 focus:ring-[#00D9F5] resize-none"
+                  className="w-full bg-[#C3F4F0] border border-none rounded-[1.5rem] px-6 py-4 placeholder-[#425B80] text-[#425B80] focus:outline-none focus:none resize-none"
                 ></textarea>
               </div>
               

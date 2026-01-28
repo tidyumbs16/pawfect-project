@@ -4,7 +4,19 @@ import { supabase } from '@/lib/supabase-client';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import RankCard from '@/components/RankCard';
+import { Lexend,Mallanna } from 'next/font/google';
 
+const mallanna = Mallanna({
+  weight: "400",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const lexend = Lexend({ 
+  weight: '400', 
+  subsets: ['latin'],
+  display: 'swap',
+});
 
 
 // ข้อมูลชื่อสัตว์เลี้ยงที่ผ่านการ Clean แล้วเพื่อเอาไปโชว์ใน UI
@@ -166,22 +178,23 @@ export default function PopularPage() {
   if (loading) return <div className="min-h-screen flex items-center justify-center ">กำลังโหลดอันดับชื่อ...</div>;
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] py-12 px-4 flex flex-col items-center ">
-      <h1 className="text-4xl font-bold text-[#4A628A] mb-3">Popular Ranking</h1>
-      <h2 className=" text-[17px] text-[#4A628A] mb-8 font-normal">อันดับชื่อสัตว์เลี้ยงที่ได้รับความนิยมสูงสุด</h2>
-<div className="relative w-full  h-[900px] mb-10"> 
-  <Image
-    src="/toptierpage.png"
-    alt="Trophy"
-    fill 
-    className="object-cover" // เปลี่ยนจาก contain เป็น cover
-    priority 
-  />
-</div>
-
+    <div className={`${lexend.className} min-h-screen bg-[#F8FAFC] py-12 px-4 flex flex-col items-center`}>
+  <h1 className="text-4xl font-bold text-[#4A628A] mb-3">ชื่อสัตว์เลี้ยงยอดนิยม</h1>
+  <h2 className=" text-[17px] text-[#4A628A] mb-8 font-normal">ชื่อที่ไ่ด้รับความนิยมสูงสุด</h2>
+  
+  {/* ส่วนรูปภาพที่ขยายใหญ่ 900px และเต็มจอซ้ายขวา */}
+  <div className="relative w-screen h-[900px] mb-10 -mx-4"> 
+    <Image
+      src="/toptierpage.png"
+      alt="Trophy"
+      fill 
+      className="object-cover object-center" 
+      priority 
+    />
+  </div>
 
       {/* --- UI TAB จากโค้ดมึง --- */}
-      <div className="w-full max-w-[1152px] h-[70px] mb-8 bg-white/50 border border-white p-1.5 rounded-xl shadow-xl">
+      <div className={`${mallanna.className} w-full max-w-[1152px] h-[70px] mb-8 bg-white/50 border border-white p-1.5 rounded-xl shadow-xl`} >
         <div className="flex gap-2 mb-8 no-scrollbar max-w- w-full justify-center pb-2">
           {tabs.map((tab) => (
             <button
@@ -217,11 +230,11 @@ export default function PopularPage() {
             ))
           ) : (
             <div className="py-24 text-center">
-               <Image src="/notype.png" alt="Empty" width={300} height={200} className="mx-auto opacity-70" />
+                <Image src="/notype.png" alt="Empty" width={300} height={200} className="mx-auto opacity-70" />
             </div>
           )}
         </div>
       </div>
     </div>
-  );
-}
+  )
+};

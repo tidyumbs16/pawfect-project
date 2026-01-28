@@ -73,7 +73,7 @@ listModels();
 
 
 const model = genAI.getGenerativeModel({ 
-  model: "gemini-robotics-er-1.5-preview" 
+  model: "gemini-3-flash-preview" 
 });
 
 console.log("✅ Pawfect AI System Ready ");
@@ -205,7 +205,8 @@ const app = new Elysia()
         // Fetch Profile via Prisma
         const profile = await prisma.profiles.findUnique({
           where: { id: user.id },
-          select: { username: true }
+          select: { username: true , avatar_url: true },
+     
         });
 
         return {
@@ -214,6 +215,7 @@ const app = new Elysia()
             id: user.id,
             email: user.email,
             username: profile?.username ?? "",
+            avatar_url: profile?.avatar_url ?? null,
           },
         };
       })
@@ -673,8 +675,8 @@ const app = new Elysia()
       }
 
       const updated = await prisma.appointments.update({
-        where: { id },
-        data: { status },
+        where: { id: id },
+        data: { status: status },
       });
 
       return updated;
@@ -1113,7 +1115,7 @@ gte: todayStart, // นับเฉพาะนัดหมายที่ยั
     contents.push({ role: "user", parts: currentParts });
 
     const response = await fetch(
-  `https://generativelanguage.googleapis.com/v1beta/models/gemini-robotics-er-1.5-preview:generateContent?key=${GEMINI_API_KEY}`,
+  `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${GEMINI_API_KEY}`,
   {
     method: "POST",
     headers: { "Content-Type": "application/json" },

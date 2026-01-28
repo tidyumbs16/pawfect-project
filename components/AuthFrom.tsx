@@ -5,6 +5,16 @@ import Image from "next/image";
 import { AnimatePresence, motion } from "framer-motion";
 import { supabase } from "@/lib/supabase-client";
 import { useRouter } from "next/navigation";
+import { Lexend } from "next/font/google";
+
+const lexend = Lexend({ 
+  weight: '400', 
+  subsets: ['latin'],
+  display: 'swap',
+});
+
+
+
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -149,7 +159,7 @@ const AuthForm = () => {
         return;
       }
 
-      // 3. RESET PASSWORD -> ตั้งรหัสใหม่ (เพิ่มส่วนนี้เข้ามา)
+      // 3. RESET PASSWORD -> ตั้งรหัสใหม่ 
       if (view === "reset-password") {
         if (newPassword !== confirmPassword) {
           alert("Passwords do not match!");
@@ -235,20 +245,20 @@ const AuthForm = () => {
     if (view === "verify")
       return "We've sent a 6-digit code to your email address. Please enter the code below to proceed.";
     if (view === "forgot")
-      return "No worries! Enter your email and we'll send you a code.";
+      return "No worries! Enter your email and we'll send you a 6-digit code to verify your account.";
     return "Please give us basic information Thanks!";
   };
 
   return (
-    <div className="flex items-center justify-center mt-10">
-      <div className="w-full max-w-md p-10 pt-8 bg-gradient-to-b from-[#FFD361] to-[#FF8A00] rounded-3xl shadow-xl min-h-[560px] flex flex-col justify-start relative overflow-hidden transition-all duration-300">
+  <div className={`flex items-center justify-center mt-10 ${lexend.className}`}>
+      <div className="w-full max-w-md p-10 pt-8 bg-gradient-to-b from-[#FFC23B] to-[#EE9106] rounded-[2rem] shadow-xl min-h-[560px] flex flex-col justify-start relative overflow-hidden transition-all duration-300">
         {/* HEAD */}
         <div className="text-center mb-6 z-10">
           <motion.h1
             key={view}
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-3xl font-semibold text-white leading-tight"
+            className="text-4xl font-sm text-white leading-tight"
           >
             {getHeaderTitle()}
           </motion.h1>
@@ -256,7 +266,7 @@ const AuthForm = () => {
             key={`${view}-sub`}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="mt-4 text-white/90 text-sm px-2 leading-relaxed"
+            className="mt-3 text-white/90 text-md px-2 leading-relaxed"
           >
             {getSubTitle()}
           </motion.p>
@@ -277,7 +287,7 @@ const AuthForm = () => {
                 exit={{ opacity: 0, y: -10, height: 0 }}
                 className="relative overflow-hidden"
               >
-                <div className="absolute left-4 top-3.5 pointer-events-none">
+                <div className="absolute left-4 top-4 pointer-events-none">
                   <svg
                     xmlns="http://www.w3.org/2000/svg"
                     width="20"
@@ -294,7 +304,7 @@ const AuthForm = () => {
                   placeholder="Username"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full py-3.5 pl-12 pr-5 bg-[#FFC88D] rounded-full text-white placeholder-white/70 focus:outline-none mb-4"
+                  className="w-full py-3.5 pl-12 pr-5 bg-[#FFC88D] rounded-full text-white placeholder-white focus:outline-none "
                   required
                 />
               </motion.div>
@@ -302,33 +312,37 @@ const AuthForm = () => {
           </AnimatePresence>
 
           {/* Email: Show everywhere EXCEPT Reset Password (verified user) & Verify */}
-          {view !== "verify" && view !== "reset-password" && (
-            <motion.div layout className="relative">
-              <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="20"
-                  height="20"
-                  viewBox="0 0 24 24"
-                  fill="#ffffff"
-                >
-                  <path d="M22 7.5v9.5a3 3 0 0 1 -3 3h-14a3 3 0 0 1 -3 -3v-9.5l10 6l10 -6z" />
-                  <path d="M19 4a3 3 0 0 1 3 3l-10 6l-10 -6a3 3 0 0 1 3 -3h14z" />
-                </svg>
-              </div>
-              <input
-                type="email"
-                placeholder={
-                  view === "forgot" ? "your.email@example" : "Email Address"
-                }
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className={`w-full py-3.5 pl-12 pr-5 rounded-full text-white placeholder-white/70 focus:outline-none transition-colors 
-                  ${view === "forgot" ? "bg-white/20 border-2 border-white/30" : "bg-[#FFC88D]"}`}
-                required
-              />
-            </motion.div>
-          )}
+         {view !== "verify" && view !== "reset-password" && (
+  <motion.div layout className="relative">
+    <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none mt-3 ">
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        width="20"
+        height="20"
+        viewBox="0 0 24 24"
+       
+        fill={view === "forgot" ? "#FA9529" : "#ffffff"}
+      >
+        <path d="M22 7.5v9.5a3 3 0 0 1 -3 3h-14a3 3 0 0 1 -3 -3v-9.5l10 6l10 -6z" />
+        <path d="M19 4a3 3 0 0 1 3 3l-10 6l-10 -6a3 3 0 0 1 3 -3h14z" />
+      </svg>
+    </div>
+    <input
+      type="email"
+      placeholder={
+        view === "forgot" ? "your.email@example" : "Email Address"
+      }
+      value={email}
+      onChange={(e) => setEmail(e.target.value)}
+      className={`w-full py-3.5 pl-12 pr-5 rounded-full focus:outline-none transition-all mt-5 ${lexend.className} 
+        ${view === "forgot" 
+          ? "bg-white text-slate-600 placeholder-[#D3D3D3] border-none shadow-sm" // แต่งแค่หน้า Forgot ตามที่มึงสั่ง
+          : "bg-[#FFC88D] text-white placeholder-white/80"                  // หน้า Login ใช้โค้ดเดิมเป๊ะ ไม่แตะ
+        }`}
+      required
+    />
+  </motion.div>
+)}
 
           {/* RESET PASSWORD INPUTS (New Password & Confirm) */}
           {view === "reset-password" && (
@@ -357,7 +371,7 @@ const AuthForm = () => {
                   placeholder="New Password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
-                  className="w-full py-3.5 pl-12 pr-5 bg-[#FFC88D] rounded-full text-white placeholder-white/70 focus:outline-none"
+                  className="w-full py-3.5 pl-12 pr-5 bg-[#FFC88D] rounded-full text-white placeholder-white focus:outline-none"
                   required
                 />
               </div>
@@ -379,7 +393,7 @@ const AuthForm = () => {
                   placeholder="Confirm New Password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full py-3.5 pl-12 pr-5 bg-[#FFC88D] rounded-full text-white placeholder-white/70 focus:outline-none"
+                  className="w-full py-3.5 pl-12 pr-5 bg-[#FFC88D] rounded-full text-white placeholder-white focus:outline-none"
                   required
                 />
               </div>
@@ -398,7 +412,7 @@ const AuthForm = () => {
               >
                 <div className="pt-4">
                   <div className="relative">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-white">
+                    <div className="absolute left-4 top-1/2 -translate-y-1/2 pointer-events-none text-white -mt-1">
                       <svg
                         xmlns="http://www.w3.org/2000/svg"
                         width="20"
@@ -414,13 +428,13 @@ const AuthForm = () => {
                       placeholder="Password"
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
-                      className="w-full py-3.5 pl-12 pr-12 bg-[#FFC88D] rounded-full text-white placeholder-white/70 focus:outline-none"
+                      className="w-full py-3.5 pl-12 pr-12 bg-[#FFC88D] rounded-full text-white placeholder-white focus:outline-none -mt-2"
                       required
                     />
                     <button
                       type="button"
                       onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white transition-colors focus:outline-none"
+                      className="absolute right-4 top-1/2 -translate-y-1/2 text-white/80 hover:text-white transition-colors focus:outline-none -mt-1"
                     >
                       {showPassword ? (
                         <svg
@@ -463,40 +477,42 @@ const AuthForm = () => {
           </AnimatePresence>
 
           {/* OTP INPUTS (Verify Only) */}
-          {view === "verify" && (
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="flex justify-center gap-2 mb-4"
-            >
-              {otp.map((digit, index) => (
-                <input
-                  key={index}
-                  ref={(el) => {
-                    otpInputRefs.current[index] = el;
-                  }}
-                  type="text"
-                  maxLength={1}
-                  value={digit}
-                  onChange={(e) => handleOtpChange(index, e.target.value)}
-                  onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                  className="w-12 h-12 rounded-xl bg-white text-center text-xl font-bold text-gray-800 focus:outline-none focus:ring-2 focus:ring-orange-500 shadow-sm"
-                />
-              ))}
-            </motion.div>
-          )}
+         {view === "verify" && (
+  <motion.div
+    initial={{ opacity: 0, scale: 0.9 }}
+    animate={{ opacity: 1, scale: 1 }}
+    /* ปรับ gap-4 ให้ห่างกันมากขึ้น และ mt-12 ให้ห่างจากข้อความด้านบน */
+    className="flex justify-center gap-3 mb-8 mt-12"
+  >
+    {otp.map((digit, index) => (
+      <input
+        key={index}
+        ref={(el) => {
+          otpInputRefs.current[index] = el;
+        }}
+        type="text"
+        maxLength={1}
+        value={digit} // Logic เดิม
+        onChange={(e) => handleOtpChange(index, e.target.value)} // Logic เดิม
+        onKeyDown={(e) => handleOtpKeyDown(index, e)} // Logic เดิม
+        /* ปรับความกว้าง/สูง และความโค้งมน (rounded-xl) พร้อมสี Text ให้เด่น */
+        className={`w-14 h-14 rounded-md bg-white text-center text-2xl font-bold text-[#425B80] focus:outline-none  transition-all  ${lexend.className}`}
+      />
+    ))}
+  </motion.div>
+)}
 
           {/* Submit Button */}
           <motion.button
             layout
             type="submit"
-            className={`w-full py-3 rounded-full shadow-md transition font-bold text-lg mt-4
+            className={`w-full py-3 rounded-full shadow-md transition font-bold text-lg mt-2
               ${
                 view === "forgot" ||
                 view === "verify" ||
                 view === "reset-password"
-                  ? "bg-[#E65100] text-white hover:bg-[#BF360C]"
-                  : "bg-white text-orange-600 hover:bg-yellow-50"
+                  ? " text-white bg-[#F67F00]"
+                  : "bg-white text-[#F16527] "
               }`}
             disabled={loading}
           >
@@ -524,7 +540,7 @@ const AuthForm = () => {
                 exit={{ opacity: 0 }}
                 className="flex justify-between items-center text-white text-sm px-2 pt-1"
               >
-                <label className="flex items-center cursor-pointer hover:opacity-80 transition">
+                <label className="flex items-center cursor-pointer  transition">
                   <div className="relative flex items-center">
                     <input
                       type="checkbox"
@@ -550,7 +566,7 @@ const AuthForm = () => {
                 <button
                   type="button"
                   onClick={() => switchView("forgot")}
-                  className="font-medium underline hover:text-white/80 transition focus:outline-none"
+                  className="font-medium underline  transition focus:outline-none"
                 >
                   Forgot Password?
                 </button>
@@ -564,57 +580,61 @@ const AuthForm = () => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                className="text-center text-white text-sm pt-4"
+                className="text-center text-white text-[19px] pt-6"
               >
-                <span>Wait, I remember now! </span>
+                <span>Wait, I remember now! Back to </span>
                 <button
                   type="button"
                   onClick={() => switchView("login")}
                   className="font-bold underline hover:text-white/80"
                 >
-                  Back to Login
+                 Login
                 </button>
               </motion.div>
             )}
 
             {/* VIEW: VERIFY (OTP) */}
             {view === "verify" && (
-              <motion.div
-                key="verify-actions"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="text-center text-white text-sm pt-6"
-              >
-                <p className="mb-2">Didn’t receive the code?</p>
-                {timer > 0 ? (
-                  <span className="opacity-80">
-                    Resend Code in 0:{timer < 10 ? `0${timer}` : timer}
-                  </span>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={handleResendCode}
-                    className="font-bold underline hover:text-white/80"
-                  >
-                    Resend Code
-                  </button>
-                )}
-              </motion.div>
-            )}
+  <motion.div
+    key="verify-actions"
+    initial={{ opacity: 0 }}
+    animate={{ opacity: 1 }}
+    exit={{ opacity: 0 }}
+    /* ดันขึ้นไปใกล้ปุ่ม Verify นิดนึงด้วย pt-4 */
+    className="text-center text-white text-sm pt-4"
+  >
+    {/* ปรับให้ขึ้นมาอยู่บรรทัดเดียวกันด้วย flex และ gap-1.5 */}
+    <div className="flex items-center justify-center gap-1.5 text-[17px]"> 
+      <p>Didn’t receive the code?</p>
+      {timer > 0 ? (
+        <span className="font-md none-underline">
+          Resend Code <span className="none-underline ml-1">in 0:{timer < 10 ? `0${timer}` : timer}</span>
+        </span>
+      ) : (
+        <button
+          type="button"
+          onClick={handleResendCode}
+          className="font-md underline hover:text-white/80 transition-colors"
+        >
+          Resend Code
+        </button>
+      )}
+    </div>
+  </motion.div>
+)}
 
-            {view === "register" && <motion.div className="h-4" />}
+{view === "register" && <motion.div className="h-4" />}
           </AnimatePresence>
 
           {/* TOGGLE: Login/Register */}
           {(view === "login" || view === "register") && (
-            <motion.div layout className="text-center pt-6 mt-auto">
+            <motion.div layout className="text-center pt-10 ">
               <button
                 type="button"
                 onClick={() =>
                   switchView(view === "login" ? "register" : "login")
                 }
-                className="text-white hover:underline focus:outline-none text-base"
+                className="text-white  focus:outline-none text-[18px] "
               >
                 <span className="opacity-90">
                   {view === "login"

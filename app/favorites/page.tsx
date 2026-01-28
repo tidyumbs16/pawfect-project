@@ -4,6 +4,20 @@ import { supabase } from '@/lib/supabase-client';
 import Image from 'next/image';
 import FavoriteCard from '@/components/FavoriteCard'; // เช็ค path ให้ถูกนะมึง
 import { useRouter } from 'next/navigation';
+import { Lexend,Mallanna } from 'next/font/google';
+
+const mallanna = Mallanna({
+  weight: "400",
+  subsets: ["latin"],
+  display: "swap",
+});
+
+const lexend = Lexend({ 
+  weight: '400', 
+  subsets: ['latin'],
+  display: 'swap',
+});
+
 
 // --- Interface (ห้ามหาย) ---
 interface IFavoriteItem { favId: number; nameTh: string; nameEn: string; meaning: string; tag: string; }
@@ -97,7 +111,7 @@ export default function FavoritesPage() {
   if (loading) return <div className="min-h-screen flex items-center justify-center">กำลังโหลด...</div>;
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] py-12 px-4 flex flex-col items-center">
+    <div className={`min-h-screen bg-[#F8FAFC] py-12 px-4 flex flex-col items-center ${lexend.className}`}>
       <h1 className="text-4xl font-black text-[#4A628A] mb-3  ">Favorites</h1>
       <h2 className="text-lg text-[#4A628A] mb-8">ชื่อโปรดของคุณ</h2>
 
@@ -108,7 +122,8 @@ export default function FavoritesPage() {
             <button
               key={tab}
               onClick={() => setActiveTab(tab)} // 🔥 เปลี่ยนแท็บตรงนี้
-              className={`px-6 py-2.5 rounded-[1rem] text-sm font-bold transition-all shadow-sm border whitespace-nowrap w-full mt-1.5 ${
+              className={`px-6 py-2.5 rounded-[1rem] text-sm font-bold transition-all shadow-sm border whitespace-nowrap w-full mt-1.5 ${mallanna.className} 
+              ${
                 activeTab === tab 
                   ? 'bg-gradient-to-r from-[#FE972A] via-[#FA972A] to-[#FFBE39] text-white border-transparent text-[16px] ' 
                   : 'bg-[#C0C0C0]/20 text-[#C0C0C0] text-[16px] border-slate-100 '

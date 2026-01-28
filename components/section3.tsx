@@ -1,4 +1,13 @@
+"use client";
 import React from 'react';
+import { Mallanna } from "next/font/google";
+
+const mallanna = Mallanna({
+  weight: "400",
+  subsets: ["latin"],
+  display: "swap",
+});
+
 
 // ข้อมูล Feature
 const featuresLeft = [
@@ -47,9 +56,9 @@ const FeatureItem = ({ text, align, className = '' }: FeatureItemProps) => {
 
 export default function App() {
   return (
-    // เพิ่ม overflow-x-hidden ที่ wrapper หลักเพื่อป้องกันการเลื่อนซ้ายขวา
-    <div className="font-sans antialiased w-full overflow-x-hidden">
-      {/* Import Font Kanit และ Reset Body Margin */}
+    // เปลี่ยนจาก font-sans เป็น mallanna.className เพื่อใช้ฟอนต์ที่กำหนด
+    <div className={`${mallanna.className} antialiased w-full overflow-x-hidden`}>
+      {/* Reset Body Margin */}
       <style>{`
         html, body { 
           margin: 0;
@@ -68,7 +77,7 @@ export default function App() {
           {/* ส่วนหัวข้อ */}
           <div className="text-center mb-10 md:mb-16 space-y-16 -mt-6">
             <h2 className="text-2xl md:text-5xl font-semibold text-white drop-shadow-lg tracking-wide">
-             ”สิ่งที่ <span className="text-white">Pawfect Name</span> มอบให้คุณ”
+              ”สิ่งที่ <span className="text-white">Pawfect Name</span> มอบให้คุณ”
             </h2>
             <p className="mx-auto max-w-4xl text-white/95 text-base md:text-lg  font-light drop-shadow-sm px-4 ">
               เราเข้าใจดีว่าการตั้งชื่อสัตว์เลี้ยงเป็นช่วงเวลาที่สำคัญและสนุกสนาน เราจึงได้รวบรวม ฐานข้อมูลชื่อที่ดีที่สุด <br/>
@@ -87,7 +96,7 @@ export default function App() {
                   key={index} 
                   text={item.title} 
                   align="right" 
-                  // จัดตำแหน่งตามรูปตัวอย่าง
+                  // จัดตำแหน่งตามรูปตัวอย่างเดิม
                   className={index === 0 ? 'lg:mr-0' : (index === 1 ? 'lg:mr-12 xl:mr-23' : 'lg:mr-0')}
                 />
               ))}
@@ -100,7 +109,6 @@ export default function App() {
                   <div className="absolute bottom-0 w-[80%] h-[20%] bg-black/20 blur-2xl rounded-[100%]"></div>
                   
                   {/* รูปน้องหมาที่ให้มา */}
-                  {/* เพิ่ม max-w-[100vw] เพื่อป้องกันรูปดันจนจอขยาย */}
                   <img 
                       src="/dogsec3.png"
                       alt="Happy Beagle Dog" 
@@ -119,7 +127,7 @@ export default function App() {
                   key={index} 
                   text={item.title} 
                   align="left"
-                  // จัดตำแหน่งตามรูปตัวอย่าง
+                  // จัดตำแหน่งตามรูปตัวอย่างเดิม
                   className={index === 0 ? 'lg:ml-0' : (index === 1 ? 'lg:ml-12 xl:ml-23' : 'lg:ml-0')}
                 />
               ))}

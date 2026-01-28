@@ -1,6 +1,13 @@
 "use client";
 import React from 'react';
 import { Heart } from "lucide-react";
+import { Lexend } from "next/font/google";
+
+const lexend = Lexend({ 
+  weight: '400', 
+  subsets: ['latin'],
+  display: 'swap',
+});
 
 interface FavoriteCardProps {
   nameTh: string;
@@ -25,7 +32,7 @@ const FavoriteCard = ({ nameTh, nameEn, tag, meaning, onRemove }: FavoriteCardPr
   const displayTags = tagsArray.join(" / ");
 
   return (
-   <div className="max-w-[990px] w-full h-[160px] rounded-lg p-5 border border-white flex flex-col gap-1 shrink-0 transition-all shadow-lg bg-white">
+   <div className={`max-w-[990px] w-full h-[160px] rounded-lg p-5 border border-white flex flex-col gap-1 shrink-0 transition-all shadow-lg bg-white ${lexend.className}`}>
   <div className="flex justify-between items-start gap-2">
     {/* ฝั่งซ้าย: ชื่ออยู่บน แท็กอยู่ล่าง */}
     <div className="flex flex-col gap-2 ml-9 min-w-0">

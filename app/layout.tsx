@@ -36,7 +36,7 @@ export default function RootLayout({
     <html lang="en">
       <body
         // 🔥 เพิ่ม lexend.variable เข้าไป และใส่ font-sans font-normal เพื่อให้เป็นตัวปกติทั้งเว็บ
-        className={`${lexend.variable} ${geistSans.variable} ${geistMono.variable} font-sans font-normal antialiased`}
+        className={`${lexend.variable}  font-sans font-normal antialiased`}
       >
         <Navbar />
         {children}

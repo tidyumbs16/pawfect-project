@@ -8,10 +8,10 @@ const Tab = ({ label, active, onClick }: TabProps) => {
   return (
     <button
       onClick={onClick}
-      className={`px-4 py-1.5 rounded-lg text-sm transition shadow-[1px_5px_4px_] shadow-[#9C9C9C]/80 ${
+      className={`px-2 py-1.5  rounded-lg  transition shadow-[1px_5px_4px_] shadow-[#9C9C9C]/80 min-w-[100px] text-center ${
         active
           ? "bg-[#FA9529] text-white"
-          : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+          : "bg-[#FFFFFF] text-[#9C9C9C] hover:bg-gray-200"
       }`}
     >
       {label}

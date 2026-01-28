@@ -19,12 +19,21 @@ import {
   Loader2,
   BookOpen,
   ImagePlus,
+  Clock3,
+  
 } from "lucide-react";
 import { supabase } from "@/lib/supabase-client";
 import { title } from "process";
 import { time } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from 'next/navigation'; 
+import { Lexend } from "next/font/google";
+
+const lexend = Lexend({ 
+  weight: '400', 
+  subsets: ['latin'],
+  display: 'swap',
+});
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -100,6 +109,13 @@ export default function MyDiaryPage() {
   const isDown = useRef(false);
   const startX = useRef(0);
   const scrollLeft = useRef(0);
+
+const [deleteId, setDeleteId] = useState<string | null>(null);
+const [showDeleteModal, setShowDeleteModal] = useState(false);
+
+const [deletePetId, setDeletePetId] = useState<string | null>(null);
+const [showDeletePetModal, setShowDeletePetModal] = useState(false);
+
 
 
 
@@ -396,7 +412,7 @@ export default function MyDiaryPage() {
   console.log("Diary page loaded");
 
   const handleDeletePet = async (id: string) => {
-    if (!confirm("ต้องการลบสัตว์เลี้ยงตัวนี้หรือไม่?")) return;
+   
 
     try {
       const {
@@ -664,19 +680,46 @@ export default function MyDiaryPage() {
 
   const [diaries, setDiaries] = useState<Diary[]>([]);
   useEffect(() => {
-    if (!selectedPetId) return;
+  // ถ้ายังไม่ได้เลือกสัตว์เลี้ยง ไม่ต้องโหลด
+  if (!selectedPetId) {
+    setDiaries([]);
+    return;
+  }
 
-    const fetchDiaries = async () => {
-      const res = await fetch(`${API_URL}/api/diaries/${selectedPetId}`);
+  const fetchDiaries = async () => {
+    try {
+      // 1. ดึง session เพื่อเอา token มา
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // 2. ยิง API โดยแนบ Token ไปด้วย
+      const res = await fetch(`${API_URL}/api/diaries/${selectedPetId}`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${session?.access_token}`,
+          "Content-Type": "application/json"
+        }
+      });
+
+      if (!res.ok) {
+        console.error("Fetch diaries failed status:", res.status);
+        return;
+      }
+
       const data = await res.json();
-      setDiaries(data);
-    };
+      console.log("✅ Loaded diaries for pet:", selectedPetId, data);
+      
+      // ตรวจสอบว่า data ที่ได้มาเป็น Array หรือไม่
+      setDiaries(Array.isArray(data) ? data : []);
+      
+    } catch (error) {
+      console.error("❌ Error fetching diaries:", error);
+    }
+  };
 
-    fetchDiaries();
-  }, [selectedPetId]);
+  fetchDiaries();
+}, [selectedPetId]);
 
   const handleDelete = async (diaryId: string) => {
-    if (!confirm("แน่ใจนะว่าจะลบไดอารี่นี้?")) return;
     const {
       data: { session },
     } = await supabase.auth.getSession();
@@ -694,7 +737,7 @@ export default function MyDiaryPage() {
       if (res.ok) {
         // ✅ ลบสำเร็จ ให้ Update UI (เช่น กรองเอาตัวที่ลบออกไป)
         setDiaries((prev) => prev.filter((d) => d.id !== diaryId));
-        alert("ลบเรียบร้อยแล้ว!");
+        
       } else {
         const error = await res.json();
         alert(`ลบไม่สำเร็จ: ${error.message}`);
@@ -704,10 +747,15 @@ export default function MyDiaryPage() {
       alert("เกิดข้อผิดพลาดในการลบ");
     }
   };
-
-  // UI
-  return (
-    <div className="min-h-screen bg-gray-50 flex flex-col font-sans relative select-none">
+const checkPetBeforeAction = (actionCallback: () => void): void => {
+  if (!pets || pets.length === 0) {
+    setShowWarningModal(true);
+  } else {
+    actionCallback();
+  }
+};
+ return (
+    <div className={`${lexend.className} min-h-screen bg-gray-50 flex flex-col relative select-none`}>
       {/* HEADER */}
       <header className="pt-10 pb-6 text-center px-4">
         <h1 className="text-3xl font-extrabold text-slate-700 uppercase tracking-wider">
@@ -743,7 +791,6 @@ export default function MyDiaryPage() {
             {/* Pets */}
             {!isLoadingData &&
               pets.map((pet, idx) => {
-                // robust key: prefer id, fallback to index
                 const petKey = `pet-${pet?.id ?? idx}-${idx}`;
                 const isSelected =
                   selectedPetId !== null &&
@@ -756,38 +803,26 @@ export default function MyDiaryPage() {
                     onClick={() => {
                       if (pet?.id) setSelectedPetId(String(pet.id));
                     }}
-                    className="snap-center shrink-0 w-55 h-44 rounded-3xl shadow-sm border border-gray-100 flex flex-col items-center justify-center relative overflow-hidden group hover:shadow-md transition-all cursor-pointer p-4 bg-white"
+                    className="snap-center shrink-0 w-55 h-44 rounded-3xl transition shadow-[1px_5px_4px_] shadow-[#9C9C9C]/80 border border-gray-100 flex flex-col items-center justify-center relative overflow-hidden group hover:shadow-md transition-all cursor-pointer p-4 bg-white"
                   >
                     {/* ✅ ปุ่มกากบาทลบ */}
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        handleDeletePet(String(pet?.id));
+                        setDeletePetId(String(pet?.id));
+                        setShowDeletePetModal(true);
                       }}
-                      className="
-    absolute top-2 right-2
-    w-6 h-6
-    bg-[#EEEEEE]/100
-  
-    rounded-full 
-    flex items-center justify-center
-    text-white
-    hover:bg-red-500
-    hover:text-white
-    transition-all
-    opacity-0 group-hover:opacity-100
-    z-20
-  "
+                      className="absolute top-2 right-3 w-5 h-5 bg-[#EEEEEE]/100 rounded-full flex items-center justify-center text-white hover:bg-red-500 hover:text-white transition-all opacity-0 group-hover:opacity-100 z-20"
                     >
-                      <X size={14} strokeWidth={3} />
+                      <X size={15} strokeWidth={3} />
                     </button>
 
                     {/* รูปโปรไฟล์ */}
                     <div
-                      className={`w-20 h-20 rounded-full overflow-hidden border-2 mb-3 shadow-sm transition-all ${
+                      className={`w-23 h-23 rounded-full overflow-hidden border-2 mb-3 shadow-sm transition-all ${
                         isSelected
-                          ? "border-orange-400 ring-2 ring-orange-100"
-                          : "border-orange-100"
+                          ? "border-[#FA9529] ring-2 ring-orange-100"
+                          : "border-none"
                       }`}
                     >
                       {pet?.image ? (
@@ -803,7 +838,7 @@ export default function MyDiaryPage() {
                       )}
                     </div>
 
-                    <span className="font-bold text-lg text-slate-700">
+                    <span className="text-[17px] text-[#425B80]">
                       {pet?.name ?? "Unnamed"}
                     </span>
 
@@ -819,29 +854,16 @@ export default function MyDiaryPage() {
               <div
                 key={`draft-${draftId}`}
                 onClick={() => handleClickDraft(draftId)}
-                className="snap-center shrink-0 w-48 h-44 bg-white rounded-3xl shadow-sm border border-gray-100 flex flex-col items-center justify-center relative cursor-pointer animate-in fade-in zoom-in duration-300 group hover:border-orange-200 hover:shadow-md transition-all p-4"
+                className="snap-center shrink-0 w-48 h-44 bg-white rounded-3xl shadow-sm border border-gray-100 flex flex-col items-center justify-center relative cursor-pointer animate-in fade-in zoom-in duration-300 group hover:shadow-md transition-all p-4"
               >
                 <button
                   onClick={(e) => handleRemoveDraft(e, draftId)}
-                  className="
-    absolute top-2 right-2
-    w-6 h-6
-    bg-[#EEEEEE]/100
-  
-    rounded-full 
-    flex items-center justify-center
-    text-white
-    hover:bg-red-500
-    hover:text-white
-    transition-all
-    opacity-0 group-hover:opacity-100
-    z-20
-  "
+                  className="absolute top-2 right-2 w-5 h-5 bg-[#EEEEEE]/100 rounded-full flex items-center justify-center text-white hover:bg-red-500 hover:text-white transition-all opacity-0 group-hover:opacity-100 z-20"
                 >
                   <X size={14} strokeWidth={3} />
                 </button>
                 <div className="w-full h-full flex flex-col items-center justify-center gap-1">
-                  <div className="w-20 h-20 rounded-full bg-gray-50 flex items-center justify-center mb-2  ">
+                  <div className="w-20 h-20 rounded-full bg-gray-50 flex items-center justify-center mb-2">
                     <img
                       src={"/dog_add.png"}
                       alt="ไอคอนเพิ่มสัตว์เลี้ยง"
@@ -849,7 +871,6 @@ export default function MyDiaryPage() {
                     />
                   </div>
 
-                  {/* ข้อความใต้ไอคอน */}
                   <span className="text-slate-400 text-sm font-medium">
                     เพิ่มสัตว์เลี้ยง
                   </span>
@@ -861,7 +882,7 @@ export default function MyDiaryPage() {
             <button
               key="add-button"
               onClick={handleAddSlot}
-              className="snap-center shrink-0 w-14 h-14 rounded-full bg-[#FA9529]  flex items-center justify-center text-white  transition-all active:scale-95 ml-5"
+              className="snap-center shrink-0 w-14 h-14 rounded-full bg-[#FA9529] flex items-center justify-center text-white transition-all active:scale-95 ml-5"
             >
               <Plus size={23} strokeWidth={3} />
             </button>
@@ -873,91 +894,85 @@ export default function MyDiaryPage() {
         {/* ======================================================= */}
         {/* 1. ปุ่ม "กำหนดกิจกรรมนัดหมาย" (แสดงเสมอ) */}
         {/* ======================================================= */}
-        <button
-          onClick={() => setShowAppointmentForm(true)}
-          className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center gap-4 hover:shadow-md transition-all active:scale-95 h-32 w-full group"
-        >
-          <div className="w-[55px] h-[55px] shrink-0 rounded-full border-3 border-orange-400 flex items-center justify-center text-orange-500">
-            <Calendar size={24} />
-          </div>
-          <span className="text-slate-600 font-medium">
-            กำหนดกิจกรรมนัดหมาย
-          </span>
-        </button>
+       <button
+  onClick={() => checkPetBeforeAction(() => setShowAppointmentForm(true))}
+  className={`${lexend.className} bg-white p-8 rounded-xl transition shadow-[1px_5px_4px_] shadow-[#9C9C9C]/80 border border-gray-100 flex flex-col items-center justify-center gap-4 active:scale-95 h-32 w-full group`}
+>
+  <div className="w-[55px] h-[55px] shrink-0 rounded-full border-3 border-orange-400 flex items-center justify-center text-orange-500">
+    <Calendar size={24} />
+  </div>
+  <span className="text-slate-600 font-medium">
+    กำหนดกิจกรรมนัดหมาย
+  </span>
+</button>
 
-        {/* ======================================================= */}
-        {/* 2. ฟอร์มเพิ่มกิจกรรม (แสดงเมื่อ showAppointmentForm เป็น true) */}
-        {/* ======================================================= */}
-        {showAppointmentForm && (
-          <div className="w-full bg-white p-6 rounded-2xl shadow-md border mt-5">
-            {/* Header ของฟอร์ม */}
-            <div className="text-center mb-4">
-              <span className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-orange-100 text-orange-500">
-                <Calendar size={24} />
-              </span>
-              <h3 className="font-semibold text-slate-700 mt-2">
-                กำหนดกิจกรรมนัดหมาย
-              </h3>
-            </div>
+{/* ======================================================= */}
+{/* 2. ฟอร์มเพิ่มกิจกรรม (แสดงเมื่อ showAppointmentForm เป็น true) */}
+{/* ======================================================= */}
+{showAppointmentForm && (
+  <div className={`${lexend.className} w-full bg-white p-6 rounded-xl transition shadow-[1px_5px_4px] shadow-[#9C9C9C]/80 border border-white mt-2`}>
+    
+    {/* Input Fields */}
+    <label className="text-[15px] text-[#425B80] font-bold ml-4">
+      หัวข้อ/กิจกรรม
+    </label>
+    <input
+      className="w-full bg-slate-100 p-4 rounded-[90px] mt-1 focus:outline-none mt-2"
+      placeholder="เช่น วันนัดฉีดวัคซีน, วันนัดอาบน้ำ"
+      value={title}
+      onChange={(e) => setTitle(e.target.value)}
+    />
+    <label className="text-[15px] text-[#425B80] font-bold ml-4">
+      รายละเอียด
+    </label>
+    <textarea
+      className="w-full bg-slate-100 p-5 rounded-[30px] focus:outline-none mt-2"
+      rows={3}
+      placeholder="รายละเอียดกิจกรรม"
+      value={description}
+      onChange={(e) => setDescription(e.target.value)}
+    />
+    <label className="text-[15px] text-[#425B80] font-bold mt-4 ml-4">
+      วันที่กำหนด
+    </label>
+    <input
+      type="date"
+      placeholder="คลิกเพื่อเลือกวันที่"
+      className="w-full bg-slate-100 p-4 rounded-[90px] focus:outline-none mt-2"
+      value={date}
+      onChange={(e) => setDate(e.target.value)}
+    />
+    <label className="text-sm text-[#425B80] font-bold mt-4 ml-4">
+      เวลาที่กำหนด
+    </label>
+    <input
+      type="time"
+      className="w-full bg-slate-100 p-4 rounded-[90px] focus:outline-none mt-2"
+      value={time}
+      onChange={(e) => setTime(e.target.value)}
+    />
 
-            {/* Input Fields */}
-            <label className="text-sm text-slate-600 font-medium">
-              หัวข้อ/กิจกรรม
-            </label>
-            <input
-              className="w-full bg-slate-100 p-3 rounded-xl mt-1"
-              placeholder="เช่น วันนัดฉีดวัคซีน, วันนัดอาบน้ำ"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-            <label className="text-sm text-slate-600 font-medium mt-4">
-              รายละเอียด
-            </label>
-            <textarea
-              className="w-full bg-slate-100 p-3 rounded-xl mt-1"
-              rows={3}
-              placeholder="รายละเอียดกิจกรรม"
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-            />
-            <label className="text-sm text-slate-600 font-medium mt-4">
-              วันที่กำหนด
-            </label>
-            <input
-              type="date"
-              className="w-full bg-slate-100 p-3 rounded-xl mt-1"
-              value={date}
-              onChange={(e) => setDate(e.target.value)}
-            />
-            <label className="text-sm text-slate-600 font-medium mt-4">
-              เวลาที่กำหนด
-            </label>
-            <input
-              type="time"
-              className="w-full bg-slate-100 p-3 rounded-xl mt-1"
-              value={time}
-              onChange={(e) => setTime(e.target.value)}
-            />
-
-            {/* ปุ่ม บันทึก/ยกเลิก */}
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                type="button"
-                onClick={() => setShowAppointmentForm(false)}
-                className="px-5 py-2 rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-100 transition"
-              >
-                ยกเลิก
-              </button>
-
-              <button
-                onClick={handleSaveAppointment}
-                className="px-6 py-2 rounded-xl bg-orange-500 text-white hover:bg-orange-600 transition"
-              >
-                บันทึก
-              </button>
-            </div>
-          </div>
-        )}
+    {/* ปุ่ม บันทึก/ยกเลิก */}
+    <div className="flex justify-end gap-3 mt-6">
+      
+      <button
+        onClick={handleSaveAppointment}
+        className="h-[50px] w-[130px] rounded-xl bg-[#FA9529] text-white font-bold transition shadow-[1px_4px_4px_rgba(156,156,156,0.8)] active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
+      >
+        <Lock size={16} strokeWidth={3} /> SAVE
+      </button>
+      
+      <button
+        type="button"
+        onClick={() => setShowAppointmentForm(false)}
+        className="h-[50px] w-[130px] rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-100 transition shadow-[1px_4px_4px_rgba(156,156,156,0.8)]"
+      >
+        ยกเลิก
+      </button>
+      
+    </div>
+  </div>
+)}
 
         {(() => {
           const appointmentList = Array.isArray(appointments)
@@ -979,7 +994,7 @@ export default function MyDiaryPage() {
           const filterLabelMap: Record<typeof filter, string> = {
             all: "ทั้งหมด",
             completed: "เสร็จแล้ว",
-            pending: "ใกล้มาถึง",
+            pending: "ยังไม่เสร็จ",
           };
 
           // ถ้ายังไม่มีข้อมูลเลย ไม่แสดงอะไร (รวม Filter)
@@ -1003,410 +1018,500 @@ export default function MyDiaryPage() {
                 }
               );
 
-              if (!res.ok) throw new Error("Failed to update");
-
-              // อัพเดท state
-              setAppointments((prev) =>
-                prev.map((item) =>
-                  item.id === appointmentId
-                    ? { ...item, status: newStatus }
-                    : item
-                )
-              );
-            } catch (error) {
-              console.error("Error updating status:", error);
-              alert("อัพเดทสถานะไม่สำเร็จ");
-            }
-          };
+             if (res.ok) {
+      // ✅ ห้ามแค่ setAppointments เอง 
+      // ✅ ต้องเรียกฟังก์ชันที่ไปดึงข้อมูลจาก API มาใหม่ (เช่น loadAppointments)
+      await loadAppointments(); 
+    }
+  } catch (error) {
+    console.error(error);
+  }
+};
 
           return (
-            <div className="mt-6">
-              {/* ส่วน Filter และ Status */}
-              <div className="flex space-x-2 mb-4">
-                <button
-                  onClick={() => setFilter("all")}
-                  className={`px-4 py-1.5 rounded-lg text-sm ${
-                    filter === "all"
-                      ? "bg-orange-500 text-white"
-                      : "bg-gray-100 text-gray-700"
-                  }`}
-                >
-                  All
-                </button>
+           <div className={`mt-6 ${lexend.className}`}>
+  {/* ส่วน Filter และ Status */}
+  <div className="flex space-x-5 mb-4">
+    <button
+      onClick={() => setFilter("all")}
+      className={`px-10 py-2 rounded-lg text-sm transition shadow-[1px_5px_4px_] shadow-[#9C9C9C]/80
+${
+  filter === "all"
+    ? "bg-[#FA9529] text-white"
+    : "bg-white text-[#9C9C9C]"
+}`}
+    >
+      All
+    </button>
 
-                <button
-                  onClick={() => setFilter("completed")}
-                  className={`px-4 py-1.5 rounded-lg text-sm ${
-                    filter === "completed"
-                      ? "bg-orange-500 text-white"
-                      : "bg-gray-100 text-gray-700"
-                  }`}
-                >
-                  Completed
-                </button>
+    <button
+      onClick={() => setFilter("completed")}
+      className={`px-4 py-2 rounded-lg text-sm transition shadow-[1px_5px_4px_] shadow-[#9C9C9C]/80
+${
+  filter === "completed"
+    ? "bg-[#FA9529] text-white"
+    : "bg-white text-[#9C9C9C]"
+}`}
+    >
+      Completed
+    </button>
 
-                <button
-                  onClick={() => setFilter("pending")}
-                  className={`px-4 py-1.5 rounded-lg text-sm ${
-                    filter === "pending"
-                      ? "bg-orange-500 text-white"
-                      : "bg-gray-100 text-gray-700"
-                  }`}
-                >
-                  To Do
-                </button>
+    <button
+      onClick={() => setFilter("pending")}
+      className={`px-10 py-2 rounded-lg text-sm transition shadow-[1px_5px_4px_] shadow-[#9C9C9C]/80
+${
+  filter === "pending"
+    ? "bg-[#FA9529] text-white"
+    : "bg-white text-[#9C9C9C]"
+}`}
+    >
+      To Do
+    </button>
+  </div>
+
+  <div className="text-sm text-[#9C9C9C] mb-4">
+    Status Filter Terminology : {filterLabelMap[filter]}
+  </div>
+
+  {/* Grid Layout สำหรับการ์ดกิจกรรม */}
+  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    {filteredAppointments.map((item) => (
+      <div
+        key={item.id}
+        className="bg-white p-5 rounded-2xl border border-gray-200 transition shadow-[1px_5px_4px_] shadow-[#9C9C9C]/80 relative"
+      >
+        {/* ปุ่ม X ที่มุมขวาบน */}
+        <button
+          onClick={async () => {
+            await fetch(`${API_URL}/api/appointment/${item.id}`, {
+              method: "DELETE",
+            });
+            loadAppointments();
+          }}
+          className="absolute top-2 right-2 z-10 bg-gray-100/80 hover:bg-red-500 hover:text-white text-gray-400 p-1 rounded-full transition-all"
+          title="ลบกิจกรรม"
+        >
+          <X size={14} strokeWidth={2.5} />
+        </button>
+
+        {/* ส่วนหัวของการ์ด: Checkbox และ Title */}
+        <div className="flex items-start mb-7 pr-8 ml-2">
+          <label className="flex items-start space-x-4 cursor-pointer flex-1 -mt-1">
+            <input
+              type="checkbox"
+              checked={item.status === "completed"}
+              className="appearance-none border-2 border-gray-300 rounded-lg w-7 h-6 mt-1.5 flex-shrink-0 checked:bg-blue-600 checked:border-blue-600 cursor-pointer transition-all relative before:content-[''] before:absolute before:hidden checked:before:block before:left-1/2 before:top-1/2 before:-translate-x-1/2 before:-translate-y-1/2 before:w-[5px] before:h-[9px] before:border-white before:border-r-[2.5px] before:border-b-[2.5px] before:rotate-45 shadow-sm"
+              onChange={() => handleToggleStatus(item.id, item.status)}
+            />
+            <div className="flex-1">
+              <div className="font-bold text-[#425B80] text-[19px]">
+                {item.title}
               </div>
-
-              <div className="text-sm text-slate-500 mb-4">
-                Status Filter Terminology : {filterLabelMap[filter]}
+              <div className="text-[14px] text-[#B4B4B4] mb-2">
+                {item.description}
               </div>
+            </div>
+          </label>
+        </div>
 
-              {/* Grid Layout สำหรับการ์ดกิจกรรม */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredAppointments.map((item) => (
-                  <div
-                    key={item.id}
-                    className="bg-white p-4 rounded-2xl shadow-sm border border-gray-100"
-                  >
-                    {/* ส่วนหัวของการ์ด: Checkbox และ Title + ปุ่ม X */}
-                    <div className="flex justify-between items-start mb-3">
-                      <label className="flex items-start space-x-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          className="form-checkbox text-orange-500 rounded border-gray-300 w-5 h-5 mt-1"
-                          checked={item.status === "completed"}
-                          onChange={() =>
-                            handleToggleStatus(item.id, item.status)
-                          }
-                        />
-                        <div>
-                          <div className="font-semibold text-slate-700 text-base">
-                            {item.title}
-                          </div>
-                          <div className="text-sm text-slate-500">
-                            {item.description}
-                          </div>
-                        </div>
-                      </label>
-                      <button
-                        onClick={async () => {
-                          await fetch(`${API_URL}/api/appointment/${item.id}`, {
-                            method: "DELETE",
-                          });
-                          loadAppointments();
-                        }}
-                        className="text-gray-400 hover:text-red-500 transition -mt-1"
-                      >
-                        &times;
-                      </button>
-                    </div>
-
-                    {/* วันที่และเวลา */}
-                    <div className="space-y-1">
-                      <div className="flex items-center text-sm text-slate-500">
-                        <span className="text-orange-400 mr-2">📅</span>
-                        <span className="text-xs text-slate-500">
-                          วันที่กำหนด{" "}
-                          {new Date(item.appointment_date).toLocaleDateString(
-                            "th-TH"
-                          )}
-                        </span>
-                      </div>
-                      <div className="flex items-center text-sm text-slate-500">
-                        <span className="text-orange-400 mr-2">⏰</span>
-                        <span className="text-xs text-slate-500">
-                          เวลากำหนด{" "}
-                          {new Date(item.appointment_date).toLocaleTimeString(
-                            "th-TH",
-                            { hour: "2-digit", minute: "2-digit" }
-                          )}{" "}
-                          น.
-                        </span>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
+        {/* วันที่และเวลา */}
+        <div className="space-y-2 mt-3 ml-3">
+          <div className="flex items-center text-sm">
+            <Calendar color="#FA9529" size={20} />
+            <span className="text-[12px] text-[#B4B4B4] ml-2">
+              วันที่กำหนด{" "}
+              {new Date(item.appointment_date).toLocaleDateString("th-TH")}
+            </span>
+          </div>
+          <div className="flex items-center text-sm">
+            <Clock3 color="#FA9529" size={20} />
+            <span className="text-[12px] text-[#B4B4B4] ml-2">
+              เวลากำหนด{" "}
+              {new Date(item.appointment_date).toLocaleTimeString("th-TH", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}{" "}
+              น.
+            </span>
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>
             </div>
           );
         })()}
 
         <button
-          onClick={() => setShowDiaryForm(true)}
-          className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col items-center justify-center gap-4 hover:shadow-md transition-all active:scale-95 h-32 w-full group"
-        >
-          <div className="w-[55px] h-[55px] shrink-0 rounded-full border-3 border-orange-400 flex items-center justify-center text-orange-500">
-            <BookOpen size={24} />
-          </div>
-          <span className="text-slate-600 font-medium">
-            เขียนไดอารี่สัตว์เลี้ยง
-          </span>
-        </button>
+  onClick={() => checkPetBeforeAction(() => setShowDiaryForm(true))}
+  className={`${lexend.className} bg-white p-8 rounded-xl transition shadow-[1px_5px_4px_] shadow-[#9C9C9C]/80 border border-gray-100 flex flex-col items-center justify-center gap-4 hover:shadow-md transition-all active:scale-95 h-32 w-full group`}
+>
+  <div className="w-[55px] h-[55px] shrink-0 rounded-full border-3 border-orange-400 flex items-center justify-center text-orange-500">
+    <SmilePlus size={30} />
+  </div>
+  <span className="text-[#425B80] font-sm">
+    สร้างโพสต์ใหม่ลงใน Diary ของคุณ
+  </span>
+</button>
 
-        {showDiaryForm && (
-          <div className="w-full bg-white p-6 rounded-2xl shadow-md border mt-5">
-            {/* Header */}
-            <div className="text-center mb-4">
-              <span className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-orange-100 text-orange-500">
-                <BookOpen size={24} />
-              </span>
-              <h3 className="font-semibold text-slate-700 mt-2">
-                เขียนไดอารี่สัตว์เลี้ยง
-              </h3>
-            </div>
+{showDiaryForm && (
+  <div className={`${lexend.className} w-full bg-white p-6 rounded-2xl transition shadow-[1px_5px_4px_] shadow-[#9C9C9C]/80 border border-white mt-2`}>
+    
+    {/* หัวข้อ */}
+    <label className="text-2xl text-[#425B80] font-bold ml-5">สร้างโพสต์ใหม่</label>
+    <input
+      className="w-full bg-slate-100 p-4 rounded-[90px] mt-1 focus:outline-none mt-5"
+      placeholder="หัวข้อ"
+      value={title}
+      onChange={(e) => setTitle(e.target.value)}
+    />
 
-            {/* หัวข้อ */}
-            <label className="text-sm text-slate-600 font-medium">หัวข้อ</label>
-            <input
-              className="w-full bg-slate-100 p-3 rounded-xl mt-1"
-              placeholder="เช่น พาเจ้าโบโบ้ไปเที่ยว"
-              value={title}
-              onChange={(e) => setTitle(e.target.value)}
+    {/* เนื้อหา */}
+    <label className="text-[15px] text-[#425B80] font-bold ml-5">
+   
+    </label>
+    <textarea
+      className="w-full bg-slate-100 p-5 rounded-[30px] focus:outline-none mt-5"
+      rows={4}
+      placeholder="เนื้อหา"
+      value={content}
+      onChange={(e) => setContent(e.target.value)}
+    />
+
+    {/* วันที่ (ย้อนหลังได้) */}
+    <label className="text-[15px] text-[#425B80] font-bold ml-5 mt-2">
+      
+    </label>
+    <input
+      type="date"
+      placeholder="คลิกเพื่อเลือกวันที่"
+      className="w-full bg-slate-100 p-4 rounded-[90px] focus:outline-none mt-5"
+      value={logDate}
+      onChange={(e) => setLogDate(e.target.value)}
+    />
+
+    {/* อัปโหลดรูป */}
+    <input
+      id="diary-images"
+      type="file"
+      accept="image/*"
+      multiple
+      className="hidden"
+      onChange={(e) => {
+        const files = e.target.files;
+        if (!files) return;
+
+        setImages((prev) => [...prev, ...Array.from(files)]);
+      }}
+    />
+
+    {/* preview รูป */}
+    {images.length > 0 && (
+      <div className="grid grid-cols-3 gap-4 mb-4">
+        {images.map((file, index) => (
+          <div
+            key={index}
+            className="relative group rounded-xl overflow-hidden border-none mt-5"
+          >
+            <img
+              src={URL.createObjectURL(file)}
+              alt="preview"
+              className="w-full h-45 object-cover border-none"
             />
 
-            {/* เนื้อหา */}
-            <label className="text-sm text-slate-600 font-medium mt-4">
-              รายละเอียด
-            </label>
-            <textarea
-              className="w-full bg-slate-100 p-3 rounded-xl mt-1"
-              rows={4}
-              placeholder="วันนี้เกิดอะไรขึ้นบ้าง..."
-              value={content}
-              onChange={(e) => setContent(e.target.value)}
-            />
-
-            {/* วันที่ (ย้อนหลังได้) */}
-            <label className="text-sm text-slate-600 font-medium mt-4">
-              วันที่ของไดอารี่
-            </label>
-            <input
-              type="date"
-              className="w-full bg-slate-100 p-3 rounded-xl mt-1"
-              value={logDate}
-              onChange={(e) => setLogDate(e.target.value)}
-            />
-
-            {/* อัปโหลดรูป */}
-            <label className="text-sm text-slate-600 font-medium mt-4 block">
-              รูปภาพ
-            </label>
-
-            <input
-              id="diary-images"
-              type="file"
-              accept="image/*"
-              multiple
-              className="hidden"
-              onChange={(e) => {
-                const files = e.target.files;
-                if (!files) return;
-
-                setImages((prev) => [...prev, ...Array.from(files)]);
-              }}
-            />
-            {/* preview รูป */}
-            {images.length > 0 && (
-              <div className="grid grid-cols-3 gap-4 mb-4">
-                {images.map((file, index) => (
-                  <div
-                    key={index}
-                    className="relative group rounded-xl overflow-hidden border"
-                  >
-                    <img
-                      src={URL.createObjectURL(file)}
-                      alt="preview"
-                      className="w-full h-32 object-cover"
-                    />
-
-                    {/* ปุ่มลบ */}
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setImages((prev) => prev.filter((_, i) => i !== index))
-                      }
-                      className="
-            absolute top-2 right-2
-            w-7 h-7 rounded-full
-            bg-white/90 text-gray-500
-            flex items-center justify-center
-            shadow
-            hover:bg-red-500 hover:text-white
-            transition
-          "
-                    >
-                      <X size={14} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* ปุ่มเพิ่มรูป */}
-            <label
-              htmlFor="diary-images"
-              className="
-    mt-2 inline-flex items-center gap-3
-    px-5 py-3
-    border-2 border-orange-400
-    rounded-2xl
-    text-orange-500 font-medium
-    cursor-pointer
-    hover:bg-orange-50
-    transition
-  "
+            {/* ปุ่มลบ */}
+            <button
+              type="button"
+              onClick={() =>
+                setImages((prev) => prev.filter((_, i) => i !== index))
+              }
+              className="absolute top-2 right-2 w-7 h-7 rounded-full bg-white/90 text-gray-500 flex items-center justify-center shadow hover:bg-red-500 hover:text-white transition"
             >
-              <ImagePlus size={22} />
-              เพิ่มรูปภาพ
-            </label>
+              <X size={14} />
+            </button>
+          </div>
+        ))}
+      </div>
+    )}
+           
 
             {/* ปุ่ม action */}
-            <div className="flex justify-end gap-3 mt-6">
-              <button
-                type="button"
-                onClick={() => setShowDiaryForm(false)}
-                className="px-5 py-2 rounded-xl border border-gray-300 text-gray-600 hover:bg-gray-100 transition"
-              >
-                ยกเลิก
-              </button>
+<div className={`flex items-center justify-between w-full gap-3 mt-10 ${lexend.className}`}>
+  {/* ฝั่งซ้าย: ปุ่มเพิ่มรูปภาพ */}
+  <label
+    htmlFor="diary-images"
+    className="mt-2 inline-flex items-center gap-3 px-10 py-3 border-2 border-[#FA9529] rounded-2xl font-medium cursor-pointer hover:bg-orange-50 text-[#FA9529]"
+  >
+    <ImagePlus size={22} />
+    เพิ่มรูปภาพ
+  </label>
 
-              <button
-                onClick={handleSaveDiary}
-                className="px-6 py-2 rounded-xl bg-orange-500 text-white hover:bg-orange-600 transition"
-              >
-                บันทึก
-              </button>
-            </div>
-          </div>
-        )}
+  {/* ฝั่งขวา: กลุ่มปุ่มยกเลิก และ SAVE */}
+  <div className="flex items-center gap-3 mt-2">
 
-        {/* =======================
+    <button
+      onClick={handleSaveDiary}
+      className="h-[50px] w-[130px] rounded-xl bg-[#FA9529] text-white font-bold transition shadow-[1px_4px_4px_rgba(156,156,156,0.8)] active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
+    >
+      <Lock size={16} strokeWidth={3} /> SAVE
+    </button>
+      
+    <button
+      type="button"
+      onClick={() => setShowDiaryForm(false)}
+      className="h-[50px] w-[130px] rounded-xl border border-gray-100 text-[#425B80] hover:bg-gray-100 transition shadow-[1px_4px_4px_rgba(156,156,156,0.8)]"
+    >
+      ยกเลิก
+    </button>
+
+  </div>
+</div>
+  </div>
+)}
+
+       {/* =======================
   Diary List
 ======================= */}
+{/* ✅ ปรับเป็นแถวละ 2 การ์ด (md:grid-cols-2) */}
+{/* ปรับให้เหลือแถวละ 1 ในมือถือ และแถวละ 2 ในคอม เพื่อให้แต่ละการ์ด "กว้าง" ออกด้านข้าง */}
+<div className={`grid grid-cols-1 lg:grid-cols-2 gap-6 w-full ${lexend.className}`}>
+  {diaries.map((diary) => (
+    <Link
+      key={diary.id}
+      href={`/iddiarie/${diary.id}`}
+      // ✅ กลับไปใช้ความสูง h-40 หรือ h-44 เพื่อไม่ให้มัน "ใหญ่" (สูง) เกินไป
+      // ✅ แต่การที่มันอยู่แถวละ 2 จะทำให้มัน "กว้าง" ออกด้านข้างโดยปริยาย
+      className="relative bg-white rounded-md border-none overflow-hidden transition shadow-[1px_5px_4px_rgba(156,156,156,0.8)] group cursor-pointer h-45 w-full"
+    >
+      <button
+        onClick={(e) => {
+          e.preventDefault(); // ป้องกันไม่ให้ลิงก์ทำงาน
+          setDeleteId(diary.id); // เก็บ ID ไว้รอการยืนยัน
+          setShowDeleteModal(true); // เปิด Modal
+        }}
+        className="absolute top-2 right-2 z-10 bg-gray-100/80 hover:bg-red-500 hover:text-white text-gray-400 p-1 rounded-full transition-all"
+      >
+        <X size={14} strokeWidth={3} />
+      </button>
 
-        {diaries.map((diary) => (
-          <Link
-            key={diary.id}
-            href={`/iddiarie/${diary.id}`}
-            // ✅ 1. เพิ่ม 'relative' เพื่อให้ปุ่มกากบาทอ้างอิงตำแหน่งกับ Card นี้
-            className="relative bg-white rounded-2xl shadow-sm border overflow-hidden hover:shadow-md transition group cursor-pointer"
-          >
-            {/* ✅ 2. ปุ่มกากบาท (Delete Button) */}
-            <button
-              onClick={(e) => {
-                e.stopPropagation(); // กันไม่ให้มันไปโดน Event คลิกของ Card (ถ้ามี)
-                handleDelete(diary.id);
-                if (confirm("แน่ใจนะว่าจะลบไดอารี่นี้?")) {
-                  // เรียกฟังก์ชันลบที่นี่ เช่น: onDelete(diary.id)
-                  console.log("Delete diary:", diary.id);
-                }
-              }}
-              className="absolute top-2 right-2 z-10 bg-white/80 hover:bg-red-500 hover:text-white text-slate-500 p-1.5 rounded-full shadow-sm transition-colors backdrop-blur-sm"
-              title="ลบไดอารี่"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2.5"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              >
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
+      <div className="flex items-center h-full p-4 sm:p-6 gap-6">
+        
+        {/* ส่วนข้อความ (ตอนนี้จะมีพื้นที่ด้านกว้างเยอะมาก) */}
+        <div className="flex-1 min-w-0 space-y-1">
+          <p className="text-[10px] sm:text-xs text-[#FA9529] font-semibold uppercase">
+            เมื่อ {new Date(diary.log_date).toLocaleDateString("th-TH", {
+              day: "numeric",
+              month: "long",
+              year: "numeric",
+            })}
+          </p>
 
-            {/* รูปปก (รูปแรก) */}
-            {Array.isArray(diary.image_urls) && diary.image_urls.length > 0 && (
-              <img
-                src={diary.image_urls[0]}
-                alt="diary cover"
-                className="w-full h-40 object-cover"
-              />
-            )}
+          <h4 className="font-bold text-[#425B80] text-sm sm:text-[18px] leading-tight line-clamp-1 mt-3">
+            {diary.title}
+          </h4>
 
-            {/* เนื้อหา */}
-            <div className="p-4 space-y-1">
-              <p className="text-xs text-orange-500">
-                {new Date(diary.log_date).toLocaleDateString("th-TH", {
-                  day: "numeric",
-                  month: "long",
-                  year: "numeric",
-                })}
-              </p>
+          {diary.content && (
+            <p className="text-sm sm:text-[14px] text-[#B4B4B4] whitespace-pre-line break-words line-clamp-2 leading-relaxed mt-4">
+              {diary.content}
+            </p>
+          )}
+        </div>
 
-              <h4 className="font-semibold text-slate-700">{diary.title}</h4>
-
-              {diary.content && (
-                <p className="text-sm text-slate-500 line-clamp-2">
-                  {diary.content}
-                </p>
-              )}
-            </div>
-          </Link>
-        ))}
+        {/* ส่วนรูปภาพ - ปรับความกว้าง (Width) ของรูปให้มากขึ้นตามตัวการ์ดที่กว้างขึ้น */}
+        {Array.isArray(diary.image_urls) && diary.image_urls.length > 0 && (
+          <div className="w-32 h-24 sm:w-44 sm:h-30 flex-shrink-0 rounded-md overflow-hidden shadow-sm mr-2">
+            <img
+              src={diary.image_urls[0]}
+              alt="diary cover"
+              className="w-full h-full object-cover"
+            />
+          </div>
+        )}
+      </div>
+    </Link>
+  ))}
+</div>
       </main>
 
-      {/* WARNING MODAL */}
-      {showWarningModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl w-full max-w-sm p-8 flex flex-col items-center text-center shadow-2xl relative">
-            <button
-              onClick={() => setShowWarningModal(false)}
-              className="absolute top-4 right-4 text-gray-300 hover:text-gray-500"
-            >
-              <X size={24} />
-            </button>
-            <div className="bg-orange-500 w-16 h-16 rounded-full flex items-center justify-center mb-6 shadow-lg shadow-orange-200">
-              <Info size={32} className="text-white" />
-            </div>
-            <h3 className="text-xl font-bold text-slate-800 mb-2">
-              Please Add Your Pet
-            </h3>
-            <p className="text-slate-500 text-sm">
-              กรุณาสร้างข้อมูลสัตว์เลี้ยงของคุณก่อน เพื่อเริ่มใช้งานฟีเจอร์นี้
-            </p>
-          </div>
-        </div>
-      )}
+     {/* WARNING MODAL */}
+{showWarningModal && (
+  <div 
+    onClick={() => setShowWarningModal(false)}
+    className={`${lexend.className} fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4`}
+  >
+    <div className="bg-white rounded-md w-full max-w-md p-12 flex flex-col items-center text-center relative cursor-default">
+      <div className="bg-[#FA9529] w-[85px] h-[85px] rounded-full flex items-center justify-center mb-8">
+        {/* ✅ ไอคอน: ปรับ strokeWidth ให้หนาขึ้น และใช้ transform ดึงขึ้นเล็กน้อย */}
+        <Info 
+          size={52} 
+          strokeWidth={2.5} 
+          className="text-white shrink-0" 
+          style={{ transform: 'translateY(-1px)' }} 
+        />
+      </div>
 
-      {/* ADD PET MODAL */}
+      <h3 className="text-xl text-[#425B80] mb-2">
+        Please Add Your Pet
+      </h3>
+    </div>
+  </div>
+)}
+
+{showDeleteModal && (
+  <div 
+    className={`${lexend.className} fixed inset-0 bg-slate-900/60 z-[100] flex items-center justify-center p-4 cursor-pointer`}
+    onClick={() => setShowDeleteModal(false)}
+  >
+    <div 
+      // ✅ ขยับ max-w จาก 340px เป็น 380px (กว้างขึ้นอีกหน่อย)
+      // ✅ ขยับ py จาก 6 เป็น 8 เพื่อให้ดูมีพื้นที่หายใจ (Vertical space)
+      // ✅ ขอบมนกำลังดี rounded-[1.5rem]
+      className="bg-white rounded-[1rem] w-full max-w-[380px] px-8 py-8 flex flex-col items-center text-center shadow-2xl relative cursor-default"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* 1. ส่วนไอคอน: ขนาด 20x20 กำลังสวยสำหรับกล่องขนาดนี้ */}
+      <div className="bg-[#FA9529] w-[85px] h-[85px] rounded-full flex items-center justify-center mb-8">
+        {/* ✅ ไอคอน: ปรับ strokeWidth ให้หนาขึ้น และใช้ transform ดึงขึ้นเล็กน้อย */}
+        <Info 
+          size={52} 
+          strokeWidth={2.5} 
+          className="text-white shrink-0" 
+          style={{ transform: 'translateY(-1px)' }} 
+        />
+      </div>
+
+      {/* 2. ส่วนข้อความ: ฟอนต์ 16px อ่านง่าย */}
+      <h3 className="text-[16px] font-sm text-[#425B80] mb-8 leading-tight">
+        คุณต้องการลบข้อมูลนี้ใช่หรือไม่?
+      </h3>
+
+      {/* 3. ส่วนปุ่ม: กลับมาใช้ขนาด w-[130px] ตามที่มึงเคยเขียนไว้ตอนแรกได้แล้ว เพราะกล่องกว้างพอ */}
+      <div className="flex gap-4 w-full justify-center">
+        <button
+          onClick={() => setShowDeleteModal(false)}
+          className="h-[48px] w-[130px] rounded-xl border border-gray-300 text-[#425B80] text-sm hover:bg-gray-50 transition shadow-[0px_2px_4px_rgba(0,0,0,0.1)]"
+        >
+          ยกเลิก
+        </button>
+        <button
+          onClick={() => {
+            if (deleteId) {
+              handleDelete(deleteId);
+              setShowDeleteModal(false);
+              setDeleteId(null);
+            }
+          }}
+          className="h-[48px] w-[130px] rounded-xl bg-[#FA9529] text-white text-sm font-bold transition shadow-[0px_2px_4px_rgba(0,0,0,0.15)] active:scale-95 flex items-center justify-center"
+        >
+          ใช่
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+{showDeletePetModal && (
+  <div 
+    className={`${lexend.className} fixed inset-0 bg-slate-900/60 z-[100] flex items-center justify-center p-4 cursor-pointer`}
+    onClick={() => setShowDeletePetModal(false)}
+  >
+    <div 
+      // ✅ ใช้ max-w-[380px] ให้เป็นสี่เหลี่ยมผืนผ้าสวยๆ เหมือนตัวตะกี้
+      // ✅ ใช้ px-10 py-8 เพื่อให้พื้นที่ด้านข้างกว้างกว่าด้านบน-ล่าง (ทรงผืนผ้า)
+      className="bg-white rounded-[1rem] w-full max-w-[380px] px-8 py-8 flex flex-col items-center text-center relative cursor-default"
+      onClick={(e) => e.stopPropagation()}
+    >
+      {/* 1. ส่วนไอคอน: วงกลมขนาดกำลังดี ไม่ใหญ่คับการ์ด */}
+      <div className="bg-[#FA9529] w-[85px] h-[85px] rounded-full flex items-center justify-center mb-8">
+        <Info 
+          size={52} 
+          strokeWidth={2.5} 
+          className="text-white shrink-0" 
+          style={{ transform: 'translateY(-1px)' }} 
+        />
+      </div>
+
+      {/* 2. ส่วนข้อความ: รักษาฟอนต์และสีเดิมของมึงไว้ */}
+      <h3 className="text-[16px] font-sm text-[#425B80] mb-8 leading-tight">
+        คุณต้องการลบข้อมูลนี้ใช่หรือไม่?
+      </h3>
+      
+      {/* 3. ส่วนปุ่ม: ขนาด 130x50 ตามที่มึงต้องการ จัดวางกึ่งกลาง */}
+      <div className="flex gap-4 w-full justify-center">
+        <button
+          onClick={() => setShowDeletePetModal(false)}
+          className="h-[48px] w-[130px] rounded-xl border border-gray-300 text-[#425B80] text-sm hover:bg-gray-50 transition shadow-[0px_2px_4px_rgba(0,0,0,0.1)]"
+        >
+          ยกเลิก
+        </button>
+        <button
+          onClick={() => {
+            if (deletePetId) {
+              handleDeletePet(deletePetId);
+              setShowDeletePetModal(false);
+              setDeletePetId(null);
+            }
+          }}
+          className="h-[48px] w-[130px] rounded-xl bg-[#FA9529] text-white text-sm font-bold transition shadow-[0px_2px_4px_rgba(0,0,0,0.15)] active:scale-95 flex items-center justify-center"
+        >
+          ใช่
+        </button>
+      </div>
+    </div>
+  </div>
+)}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    {/* ADD PET MODAL */}
       {showAddPetModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-3xl w-full max-w-lg p-6 shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh]">
+        <div className={`${lexend.className} fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4`}>
+          <div className="bg-white rounded-[1rem] w-full max-w-[30rem] p-6 relative overflow-hidden flex flex-col max-h-[90vh]">
             <div className="text-center mb-4 shrink-0">
-              <h2 className="text-2xl font-bold text-slate-700">
+              <h2 className="text-2xl font-bold text-[#425B80]">
                 เพิ่มสัตว์เลี้ยงของคุณ
               </h2>
             </div>
 
-            <div className="space-y-4 overflow-y-auto px-1 pb-2">
-              <div className="space-y-1">
-                <label className="text-sm font-semibold text-slate-400 ml-1">
+            <div className="space-y-4 overflow-y-auto px-1 pb-2 ">
+              <div className="space-y-1 mt-5">
+                <label className="text-sm font-semibold text-[#425B80] ml-1">
                   ชื่อ
                 </label>
                 <input
                   type="text"
                   value={petName}
                   onChange={(e) => setPetName(e.target.value)}
-                  placeholder="ชื่อเล่นน้อง..."
-                  className="w-full bg-gray-100 border-none rounded-xl px-4 py-3 text-slate-700 focus:ring-2 focus:ring-orange-300 outline-none placeholder:text-gray-400 transition-all"
+                  placeholder="Please Enter Pet Nickname"
+                  className="w-full bg-gray-100 border-none rounded-xl px-4 py-3 text-gray-400 focus:none outline-none placeholder:text-gray-400 transition-all"
                 />
               </div>
 
               <div className="space-y-2">
                 <div className="flex justify-between items-end">
-                  <label className="text-sm font-semibold text-slate-400 ml-1">
-                    รูปโปรไฟล์
+                  <label className="text-sm font-semibold text-[#425B80] ml-1">
+                    รูปภาพสัตว์เลี้ยง
                   </label>
                   {imageSrc && (
                     <button
                       onClick={handleCancelImage}
-                      className="text-xs text-red-500 hover:underline cursor-pointer font-medium"
+                      className="text-xs text-[#425B80] hover:underline cursor-pointer font-medium"
                     >
                       เปลี่ยนรูปภาพ
                     </button>
@@ -1416,7 +1521,7 @@ export default function MyDiaryPage() {
                 {imageSrc ? (
                   <div className="flex flex-col gap-3">
                     <div
-                      className="relative w-full aspect-square bg-slate-200 rounded-2xl overflow-hidden shadow-inner ring-4 ring-orange-50 cursor-move touch-none"
+                      className="relative w-full aspect-square bg-slate-200 rounded-2xl overflow-hidden shadow-inner ring-4 ring-orange-50 touch-none"
                       ref={containerRef}
                       onMouseDown={(e) =>
                         handleMouseDown(e as unknown as MouseEvent)
@@ -1459,7 +1564,7 @@ export default function MyDiaryPage() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-3 px-2">
+                    <div className={`flex items-center gap-3 px-2 ${lexend.className}`}>
                       <ZoomIn size={18} className="text-gray-400" />
                       <input
                         type="range"
@@ -1471,14 +1576,14 @@ export default function MyDiaryPage() {
                         className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-orange-500"
                       />
                     </div>
-                    <p className="text-xs text-center text-gray-400">
+                    <p className={`text-xs text-center text-gray-400 ${lexend.className}`}>
                       ลากเพื่อจัดตำแหน่ง • เลื่อนแถบเพื่อซูม
                     </p>
                   </div>
                 ) : (
                   <div
                     onClick={() => fileInputRef.current?.click()}
-                    className="w-full h-40 border-2 border-dashed border-gray-200 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-orange-300 hover:bg-orange-50/50 transition-all group bg-white"
+                    className={`w-full h-26 border-2 border-gray-200 rounded-2xl flex flex-col items-center justify-center cursor-pointer hover:border-orange-300 hover:bg-orange-50/50 transition-all group bg-white ${lexend.className}`}
                   >
                     <input
                       type="file"
@@ -1487,21 +1592,24 @@ export default function MyDiaryPage() {
                       accept="image/*"
                       onChange={handleImageUpload}
                     />
-                    <div className="text-gray-300 group-hover:text-orange-400 transition-colors mb-2">
-                      <ImageIcon size={32} />
+                    <div className="flex justify-items-start gap-3 text-gray-400 group-hover:text-orange-400 transition-colors mr-64">
+                      {/* ไอคอน ImagePlus */}
+                      <ImagePlus size={30} strokeWidth={1.5} /> 
+                      
+                      {/* ข้อความอัพโหลด */}
+                      <span className="text-base font-medium">
+                        อัพโหลดรูปภาพ
+                      </span>
                     </div>
-                    <span className="text-gray-400 text-sm group-hover:text-orange-400">
-                      เลือกรูปภาพ
-                    </span>
                   </div>
                 )}
               </div>
             </div>
 
-            <div className="flex gap-4 pt-4 mt-auto border-t border-gray-100">
+            <div className={`flex gap-4 pt-4 mt-auto border-t border-gray-100 ${lexend.className}`}>
               <button
                 onClick={handleCancelModal}
-                className="flex-1 py-3 px-6 rounded-xl border border-gray-200 text-slate-600 font-semibold hover:bg-gray-50 transition-colors"
+                className="flex-1 py-3 px-6 rounded-xl border border-gray-200 text-slate-600 font-semibold hover:bg-gray-50 transition shadow-[1px_5px_4px_] shadow-[#9C9C9C]/80"
               >
                 ยกเลิก
               </button>
@@ -1509,13 +1617,13 @@ export default function MyDiaryPage() {
               <button
                 onClick={handleSavePet}
                 disabled={isSaving}
-                className="flex-1 py-3 px-6 rounded-xl bg-orange-500 text-white font-bold shadow-lg shadow-orange-200 hover:bg-orange-600 transition-transform active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
+                className="flex-1 py-3 px-6 rounded-xl bg-[#FA9529] text-white font-bold transition shadow-[1px_5px_4px_] shadow-[#9C9C9C]/80 active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {isSaving ? (
                   <Loader2 className="animate-spin" />
                 ) : (
                   <>
-                    <Lock size={16} /> บันทึก
+                    <Lock size={16} strokeWidth={3} /> SAVE
                   </>
                 )}
               </button>

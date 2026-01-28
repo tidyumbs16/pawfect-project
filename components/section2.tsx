@@ -1,6 +1,14 @@
 "use client";
 import React, { useState } from 'react';
 import { ChevronUp, ChevronDown } from 'lucide-react';
+import { Mallanna } from "next/font/google";
+
+const mallanna = Mallanna({
+  weight: "400",
+  subsets: ["latin"],
+  display: "swap",
+});
+
 
 const Section2 = () => {
   const features = [
@@ -29,9 +37,9 @@ const Section2 = () => {
   };
 
   return (
-    // เปลี่ยนพื้นหลังของ Component 
-    <div className="w-full 9 px-4 md:px-8 font-prompt overflow-hidden mb-27">
-       
+    // เปลี่ยนจาก font-prompt เป็น mallanna.className เพื่อปรับใช้ฟอนต์
+    <div className={`${mallanna.className} w-full px-4 md:px-8 overflow-hidden mb-27`}>
+        
 
       <div className="max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-12 items-start">
         
@@ -66,7 +74,7 @@ const Section2 = () => {
             <div className="space-y-6">
                 {features.map((item, index) => (
                     <div key={index} className="group">
-                        {/* Header Card: ใส่กรอบและพื้นหลังที่นี่ */}
+                        {/* Header Card */}
                         <button 
                             onClick={() => toggleAccordion(index)}
                             className="w-full bg-white rounded-xl shadow-[0_2px_10px_rgba(0,0,0,0.05)] border-b-[6px] border-[#FA9529] p-5 flex justify-between items-center text-left hover:shadow-md transition-all duration-300 focus:outline-none relative z-20"
@@ -81,7 +89,7 @@ const Section2 = () => {
                             </div>
                         </button>
                         
-                        {/* Content Area: อยู่นอกกรอบ Header */}
+                        {/* Content Area */}
                         <div 
                             className={`grid transition-[grid-template-rows] duration-300 ease-in-out ${openIndex.includes(index) ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'}`}
                         >

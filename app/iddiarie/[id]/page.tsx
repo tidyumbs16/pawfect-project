@@ -2,7 +2,15 @@
 
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
-import { ArrowLeft, Edit, X, Plus, ImagePlus } from "lucide-react";
+import { ArrowLeft, Edit, X, Plus, ImagePlus, Lock } from "lucide-react";
+import { supabase } from "@/lib/supabase-client";
+import { Lexend } from "next/font/google";
+
+const lexend = Lexend({ 
+  weight: '400', 
+  subsets: ['latin'],
+  display: 'swap',
+});
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001";
 
@@ -16,6 +24,7 @@ type Diary = {
 };
 
 export default function DiaryDetailPage() {
+  
   const params = useParams();
   const router = useRouter();
   const diaryId = params.id as string;
@@ -39,34 +48,37 @@ export default function DiaryDetailPage() {
  const loadDiary = async () => {
   setIsLoading(true);
   try {
-    const token = localStorage.getItem("access_token"); // ดึง token มา
-    const headers: Record<string, string> = {};
-    if (token) headers["Authorization"] = `Bearer ${token}`;
-
+    // ✅ ดึง session จาก supabase ตามที่คุณบอก
+    const { data: { session } } = await supabase.auth.getSession();
+    
     const res = await fetch(`${API_URL}/api/diaries/detail/${diaryId}`, {
-headers: {
-    Authorization: `Bearer ${token}` // ✅ ต้องส่งไปเพื่อให้หลังบ้านรู้ว่าเป็นใคร
-  }
+      headers: {
+        // ✅ ใช้ session?.access_token ที่ได้จาก supabase จริงๆ
+        Authorization: `Bearer ${session?.access_token}`
+      }
     });
 
-    const data = await res.json();
-      setDiary(data);
-      
-      // ✅ 2. Setup ข้อมูลเข้า Form (จัดการฟอร์แมตวันที่ให้ input date อ่านได้)
-      setEditTitle(data.title);
-      setEditContent(data.content || "");
-      if (data.log_date) {
-        setEditDate(new Date(data.log_date).toISOString().split('T')[0]);
-      }
-      setExistingImages(data.image_urls || []);
-      setDeletedUrls([]);
-      setNewFiles([]);
-    } catch (error) {
-      console.error("Failed to load diary:", error);
-    } finally {
-      setIsLoading(false);
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(errorText);
     }
-  };
+
+    const data = await res.json();
+    setDiary(data);
+    
+    // ... (Logic การ Set Form เดิมของคุณ ห้ามแตะ)
+    setEditTitle(data.title);
+    setEditContent(data.content || "");
+    if (data.log_date) {
+      setEditDate(new Date(data.log_date).toISOString().split('T')[0]);
+    }
+    setExistingImages(data.image_urls || []);
+  } catch (error) {
+    console.error("Failed to load diary:", error);
+  } finally {
+    setIsLoading(false);
+  }
+};
 
   // ลบรูปเดิมออก (ตัด URL ให้เหลือแค่ Path ก่อนส่งไปหลังบ้าน)
 const handleRemoveExistingImage = (url: string) => {
@@ -97,14 +109,17 @@ const handleRemoveExistingImage = (url: string) => {
     setNewFiles((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const handleSaveEdit = async () => {
-    if (!editTitle.trim()) return alert("กรุณากรอกหัวข้อ");
+ const handleSaveEdit = async () => {
+  if (!editTitle.trim()) return alert("กรุณากรอกหัวข้อ");
 
-    const token = localStorage.getItem("access_token");
+  try {
+    // ✅ ดึง session ใหม่ก่อนส่ง Save เพื่อป้องกัน token หมดอายุ
+    const { data: { session } } = await supabase.auth.getSession();
+    
     const formData = new FormData();
     formData.append("title", editTitle);
     formData.append("content", editContent);
-    formData.append("log_date", editDate); // ✅ ตอนนี้มีค่าแล้ว
+    formData.append("log_date", editDate);
     formData.append("keep_urls", JSON.stringify(existingImages));
     formData.append("delete_urls", JSON.stringify(deletedUrls));
 
@@ -112,137 +127,132 @@ const handleRemoveExistingImage = (url: string) => {
       formData.append("new_images", file);
     });
 
-    try {
-  // ✅ 1. เช็คก่อนว่ามี token ไหม
-  const headers: Record<string, string> = {};
+    const res = await fetch(`${API_URL}/api/diaries/${diaryId}`, {
+      method: "PUT",
+      headers: {
+        // ✅ ส่ง token ที่ถูกต้องไป
+        Authorization: `Bearer ${session?.access_token}`
+      },
+      body: formData,
+    });
+
+    if (!res.ok) throw new Error("Update failed");
+
   
-  if (token && token !== "null") {
-    headers["Authorization"] = `Bearer ${token}`;
+    setShowEditForm(false);
+    await loadDiary();
+  } catch (error) {
+    console.error("Error updating diary:", error);
+    alert("บันทึกไม่สำเร็จ");
   }
-
-  const res = await fetch(`${API_URL}/api/diaries/${diaryId}`, {
-    method: "PUT",
-    headers: headers, // ✅ ส่ง object ที่เราเตรียมไว้
-    body: formData,
-  });
-
-      if (!res.ok) throw new Error("Update failed");
-
-      alert("บันทึกสำเร็จ");
-      setShowEditForm(false);
-      await loadDiary();
-    } catch (error) {
-      console.error("Error updating diary:", error);
-      alert("บันทึกไม่สำเร็จ");
-    }
-  };
+};
 
   if (isLoading) return <div className="p-10 text-center">กำลังโหลด...</div>;
   if (!diary) return <div className="p-10 text-center">ไม่พบข้อมูล</div>;
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+ <div className={`flex items-center justify-center min-h-screen py-8 ${lexend.className}`}>
       {!showEditForm ? (
         /* ✅ โหมดแสดงผล (View Mode) */
-        <div className="relative bg-white rounded-[2.5rem] shadow-sm p-8 md:p-12 space-y-6">
+        <div className="relative bg-white rounded-[1.5rem] shadow-lgtransition shadow-[1px_5px_4px_] shadow-[#9C9C9C]/80 p-10 md:p-12 space-y-8 w-full max-w-5xl mx-auto">
           <button 
             onClick={() => router.back()}
-            className="absolute top-6 left-6 w-10 h-10 flex items-center justify-center bg-orange-500 text-white rounded-full hover:bg-orange-600 transition shadow-md shadow-orange-200"
+            className="absolute top-6 left-6 w-10 h-10 flex items-center justify-center bg-[#FA9529] text-white rounded-full hover:bg-[#e8851f] transition"
           >
-            <ArrowLeft size={20} strokeWidth={3} />
+            <ArrowLeft size={20} strokeWidth={2.5} />
           </button>
 
           <button
             onClick={() => setShowEditForm(true)}
-            className="absolute top-6 right-8 flex items-center gap-1 text-orange-500 font-bold hover:text-orange-600 transition"
+            className="absolute top-6 right-6 flex items-center gap-1.5 text-[#FA9529] text-base font-medium hover:text-[#e8851f] transition"
           >
             <span>แก้ไข</span>
-            <Edit size={20} />
+            <Edit size={18} />
           </button>
 
-          <div className="text-center pt-4">
-            <h1 className="text-3xl font-bold text-slate-700 leading-tight">{diary.title}</h1>
-            <p className="text-slate-400 mt-3 font-medium">
+          <div className="text-center pt-6  ">
+            <h1 className="text-3xl font-bold text-[#425B80] -mt-6">{diary.title}</h1>
+            <p className="text-[#425B80] text-base mt-4">
               เมื่อ {new Date(diary.log_date).toLocaleDateString("th-TH", {
                 day: "numeric", month: "long", year: "numeric"
               })}
             </p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 py-4">
+          <div className="grid grid-cols-3 gap-8 py-2 mt-13">
             {diary.image_urls.map((url, i) => (
-              <div key={i} className="aspect-[4/3] rounded-3xl overflow-hidden shadow-sm border border-slate-100">
+              <div key={i} className="aspect-square rounded-md overflow-hidden shadow-sm border-none">
                 <img src={url} className="w-full h-full object-cover" alt="pet" />
               </div>
             ))}
           </div>
 
-          <div className="bg-slate-50/80 p-8 rounded-[2rem] text-slate-600 leading-relaxed text-lg min-h-[120px]">
+          <div className="bg-[#EBEBEB] p-6 rounded-[1rem] text-[#425B80]  font-bold text-base leading-relaxed min-h-[100px]  -px-5 -py-5">
             {diary.content || "ไม่มีเนื้อหาเรื่องราวในวันนี้"}
           </div>
         </div>
       ) : (
-        /* ✅ โหมดแก้ไข (Edit Mode) */
-        <div className="relative bg-white rounded-[2.5rem] shadow-sm p-8 md:p-12 space-y-8">
-          <div className="space-y-2">
-            <label className="text-slate-400 font-medium ml-2">หัวข้อ</label>
+      /* ✅ โหมดแก้ไข (Edit Mode) */
+        <div className="relative bg-[#FFFFFF] rounded-[1rem]  transition shadow-[1px_5px_4px_] shadow-[#9C9C9C]/80 p-8 md:p-10 space-y-6 w-full max-w-4xl mx-auto">
+          <div className="space-y-1.5">
+            <label className="text-[#425B80] text-sm font-bold ml-1">หัวข้อ</label>
             <input
-              className="w-full bg-slate-100/80 border-none rounded-2xl py-4 px-6 text-slate-700 outline-none focus:ring-2 focus:ring-orange-200"
+              className="w-full bg-slate-100 p-4 rounded-[90px] mt-1 focus:outline-none mt-1"
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
-              placeholder="หัวข้อโพสต์..."
+              placeholder="ตัวเลือก ชอบมปลามาเบา"
             />
           </div>
 
-          <div className="space-y-2">
-            <label className="text-slate-400 font-medium ml-2">เนื้อหา</label>
+          <div className="space-x-1.5">
+            <label className="text-[#425B80] text-sm font-bold ml-1">เนื้อหา</label>
             <textarea
-              className="w-full h-48 bg-slate-100/80 border-none rounded-2xl py-4 px-6 text-slate-700 outline-none focus:ring-2 focus:ring-orange-200 resize-none"
+              className="w-full bg-slate-100 p-10   rounded-[30px] focus:outline-none mt-1"
               value={editContent}
               onChange={(e) => setEditContent(e.target.value)}
-              placeholder="เขียนเรื่องราวของคุณ..."
+              placeholder="รายละเอียด"
             />
           </div>
 
-          <div className="space-y-2">
-            <label className="text-slate-400 font-medium ml-2">วันที่</label>
+          <div className="space-y-1.5">
+            <label className="text-[#425B80] text-sm font-bold ml-2">วันที่</label>
             <div className="relative">
               <input
                 type="date"
-                className="w-full bg-slate-100/80 border-none rounded-2xl py-4 px-6 text-slate-700 outline-none focus:ring-2 focus:ring-orange-200"
-                value={editDate} // ✅ ใช้ editDate แทน
-                onChange={(e) => setEditDate(e.target.value)} // ✅ ใส่ onChange ให้แก้ได้
+               className="w-full bg-slate-100 p-4 rounded-[90px] focus:outline-none mt-2"
+                value={editDate}
+                onChange={(e) => setEditDate(e.target.value)}
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-6 py-4">
+          <div className="grid grid-cols-3 gap-5 py-3">
             {existingImages.map((url, i) => (
-              <div key={`old-${i}`} className="relative aspect-[4/3] rounded-3xl overflow-hidden group border border-slate-100">
+              <div key={`old-${i}`} className="relative aspect-[3/4] rounded-xl overflow-hidden group border border-none">
                 <img src={url} className="w-full h-full object-cover" />
                 <button 
                   onClick={() => handleRemoveExistingImage(url)}
-                  className="absolute top-3 right-3 bg-white/90 text-slate-400 rounded-full p-1 shadow-sm hover:bg-red-500 hover:text-white transition"
+                  className="absolute top-2 right-2 bg-white/90 text-gray-400 rounded-full p-1.5 shadow-sm hover:bg-red-500 hover:text-white transition"
                 >
-                  <X size={16} strokeWidth={3} />
+                  <X size={16} strokeWidth={2.5} />
                 </button>
               </div>
             ))}
             
             {newFiles.map((file, i) => (
-              <div key={`new-${i}`} className="relative aspect-[4/3] rounded-3xl overflow-hidden border-2 border-orange-200">
-                <img src={URL.createObjectURL(file)} className="w-full h-full object-cover opacity-80" />
+              <div key={`new-${i}`} className="relative w-full h-50 rounded-md overflow-hidden border-2 border-none ">
+                <img src={URL.createObjectURL(file)} className="w-full h-full object-cover " />
                 <button 
                   onClick={() => handleRemoveNewFile(i)}
-                  className="absolute top-3 right-3 bg-white/90 text-slate-400 rounded-full p-1"
+                  className="absolute top-2 right-2 bg-white/90 text-gray-400 rounded-full p-1.5"
                 >
-                  <X size={16} strokeWidth={3} />
+                  <X size={16} strokeWidth={2.5} />
                 </button>
               </div>
             ))}
           </div>
 
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6 pt-4">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 pt-2">
             <div>
               <input 
                 id="diary-images"
@@ -254,9 +264,9 @@ const handleRemoveExistingImage = (url: string) => {
               />
               <label
                 htmlFor="diary-images"
-                className="inline-flex items-center gap-3 px-8 py-4 border-2 border-orange-400 rounded-2xl text-orange-500 font-bold cursor-pointer hover:bg-orange-50 transition"
+                className="mt-2 inline-flex items-center gap-3 px-10 py-3 border-2 border-[#FA9529] rounded-2xl  font-medium cursor-pointer hover:bg-orange-50  text-[#FA9529] "
               >
-                <ImagePlus size={22} />
+                <ImagePlus size={30} strokeWidth={1.5} /> 
                 <span>เพิ่มรูปภาพ</span>
               </label>
             </div>
@@ -264,13 +274,13 @@ const handleRemoveExistingImage = (url: string) => {
             <div className="flex items-center gap-4 w-full md:w-auto">
               <button 
                 onClick={handleSaveEdit} 
-                className="flex-1 md:flex-none flex items-center justify-center gap-2 px-12 py-4 bg-orange-500 text-white rounded-2xl font-bold shadow-lg shadow-orange-200 hover:bg-orange-600 transition"
+                className="flex-1 py-3 px-6 rounded-xl bg-[#FA9529] text-white font-bold transition shadow-[1px_5px_4px_] shadow-[#9C9C9C]/80   active:scale-95 flex items-center justify-center gap-2 disabled:opacity-50"
               >
-                <Plus size={20} /> Save
+                <Lock size={16} strokeWidth={3} /> SAVE
               </button>
               <button 
                 onClick={() => setShowEditForm(false)} 
-                className="flex-1 md:flex-none px-12 py-4 bg-white border border-slate-200 text-slate-500 rounded-2xl font-bold hover:bg-slate-50 transition"
+                className="flex-1 py-3 px-6 rounded-xl border border-gray-200 text-slate-600 font-semibold hover:bg-gray-50 transition shadow-[1px_5px_4px_] shadow-[#9C9C9C]/80"
               >
                 ยกเลิก
               </button>
@@ -279,5 +289,4 @@ const handleRemoveExistingImage = (url: string) => {
         </div>
       )}
     </div>
-  );
-}
+  )}

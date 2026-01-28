@@ -10,8 +10,8 @@ import { useNotifications } from "@/hooks/useNotifications";
 import { Lemon } from 'next/font/google';
 import Image from "next/image";
 import { Lexend } from "next/font/google";
+import { motion, AnimatePresence } from "framer-motion";
 
-// ตั้งค่าฟอนต์ Lemon
 const lemon = Lemon({ 
   weight: '400', 
   subsets: ['latin'],
@@ -75,6 +75,7 @@ export default function Navbar() {
   const [userId, setUserId] = useState<string | null>(null);
   const [username, setUsername] = useState<string | null>(null);
   const [showPopup, setShowPopup] = useState(false);
+  const [profileImage, setProfileImage] = useState<string | null>(""); 
   const [open, setOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"today" | "upcoming" | "past">(
     "today"
@@ -112,6 +113,18 @@ export default function Navbar() {
         if (json.ok) {
           setUsername(json.user.username);
           setUserId(json.user.id);
+          if (json.user.avatar_url) {
+  // ตรวจสอบว่ามันเป็น URL เต็มหรือยัง
+  const isFullUrl = json.user.avatar_url.startsWith('http');
+  
+  if (isFullUrl) {
+    setProfileImage(json.user.avatar_url);
+  } else {
+    // 🚩 เปลี่ยน 'avatars' เป็นชื่อ Bucket ที่คุณเก็บรูปโปรไฟล์ไว้
+    const { data } = supabase.storage.from('avatars').getPublicUrl(json.user.avatar_url);
+    setProfileImage(data.publicUrl);
+  }
+}
         }
       } catch (error) {
         console.error("Failed to load user session:", error);
@@ -165,6 +178,9 @@ export default function Navbar() {
     }
   }, [open, unreadCount, resetUnreadCount]);
 
+ 
+  
+
   return (
     <>
       <nav className="bg-[#F67F00] text-white w-full py-4 px-2 shadow-md">
@@ -197,7 +213,7 @@ export default function Navbar() {
                 </Link>
               </li>
               <li>
-                <Link href="/about" className="hover:text-gray-200">
+                <Link href="/abouts" className="hover:text-gray-200">
               <span className="text-[16px]">About Us</span>
                 </Link>
               </li>
@@ -227,19 +243,32 @@ export default function Navbar() {
     {/* ใช้เทคนิค span ครอบเพื่อให้ไอคอนเล็กลงตามที่คุณต้องการ */}
     <span className="w-5 h-5 flex items-center justify-center">
       <IconHeart />
-    </span> 
+    </span > 
     Favorites
   </Link>
 
   <Link
-    href="/profile"
-    className="flex items-center gap-1.5 hover:text-gray-200"
-  >
-    <span className="w-5 h-5 flex items-center justify-center">
-      <IconProfile />
-    </span> 
-    Profile
-  </Link>
+  href="/profile"
+  className="flex items-center  hover:text-gray-200 transition-all text-white gap-2"
+>
+  <span className="w-[30px] h-[30px] flex items-center justify-center ">
+    {profileImage ? (
+      <div className="w-full h-full rounded-full  overflow-hidden shadow-sm bg-gray-100">
+        <img 
+          src={profileImage} 
+          alt="Profile" 
+          className="w-full h-full object-cover"
+        />
+      </div>
+    ) : (
+      <div className="w-5 h-- flex items-center justify-center">
+        <IconProfile />
+      </div>
+    )}
+  </span> 
+  Profile
+</Link>
+
 
   {/* ✅ Notification */}
   <div className="relative" ref={ref}>
@@ -261,19 +290,31 @@ export default function Navbar() {
     </button>
 
               {/* Dropdown */}
+              <AnimatePresence>
               {open && (
-  <div className="absolute right-0 mt-6 w-[420px] bg-white rounded-[15px] shadow-lg[0_20px_60px_rgba(0,0,0,0.1)] border-none z-50 overflow-hidden animate-in fade-in zoom-in duration-300">
+                <motion.div
+      initial={{ opacity: 0, scale: 0.95, y: -10 }} // เริ่มต้น: จาง, เล็ก, ขยับขึ้น
+      animate={{ opacity: 1, scale: 1, y: 0 }}      // ตอนเปิด: ชัด, ขนาดปกติ, อยู่กับที่
+      exit={{ opacity: 0, scale: 0.95, y: -10 }}    // ตอนปิด: จาง, เล็กลง, ขยับขึ้น (หุบ)
+      transition={{ duration: 0.2 }}                 // ความเร็ว 0.2 วินาที
+      className="absolute -right-[1px] -mt-0 w-[370px] bg-white rounded-[15px] shadow-lg z-50 origin-top-right"
+    >
+
+   
+  <div className="absolute -right-[13px] mt-5  w-[370px] h-[370px] bg-white rounded-[15px] shadow-[0_20px_60px_rgba(0,0,0,0.1)] border-none z-50 animate-in fade-in zoom-in duration-300">
+  {/* ติ่งสามเหลี่ยมชี้ขึ้น */}
+  <div className="absolute -top-2 right-4 w-4 h-4 bg-white rotate-45 z-[-1]"></div>
     
     {/* Header Section */}
-    <div className="px-8 py-6 flex items-center justify-between">
-      <h3 className="text-[22px] font-bold text-[#425466]">
+    <div className={`${lexend.className} px-8 py-6 flex items-center justify-between `} >
+      <h3 className={`${lexend.className} text-2xl text-[#425B80] font-bold`}>
         แจ้งเตือนกิจกรรมนัดหมาย
       </h3>
-      <Bell size={28} className="text-[#C1C7D0]" />
+      <Bell size={30} className="text-[#D9D9D9] fill-[#D9D9D9] " />
     </div>
 
     {/* Tabs Section - ปรับพื้นหลังให้ขาวสะอาด */}
-    <div className="flex px-6 py-2 gap-5 mb-4 ">
+    <div className="flex px-7 py-1 gap-2 mb-2 ">
       <Tab
         label="วันนี้"
         active={activeTab === "today"}
@@ -290,8 +331,9 @@ export default function Navbar() {
         onClick={() => setActiveTab("past")}
       />
     </div>
+    <div className="border-t border-gray-200 mt-5" />
                   {/* Content */}
-                  <div className="max-h-96 overflow-y-auto px-2">
+                  <div className="max-h-96 overflow-y-auto ">
                     {isLoading ? (
                       <div className="py-8 text-center text-gray-400">
                         กำลังโหลด...
@@ -301,8 +343,8 @@ export default function Navbar() {
                         เกิดข้อผิดพลาด: {error}
                       </div>
                     ) : currentNotifications.length === 0 ? (
-                      <div className="py-8 text-center text-gray-400">
-                        ไม่มีการแจ้งเตือน
+                      <div className="py-8 text-center text-gray-300 mt-15 ">
+                        ยังไม่มีกิจกรรมนัดหมาย
                       </div>
                     ) : (
                       currentNotifications.map((notif) => (
@@ -314,23 +356,27 @@ export default function Navbar() {
                           isToday={activeTab === "today"}
                         />
                       ))
+                   
                     )}
+                   
                   </div>
                 </div>
+ </motion.div>
               )}
+               </AnimatePresence>
             </div>
 
             {username ? (
               <button
                 onClick={() => setShowPopup(true)}
-                className="flex items-center gap-1.5 bg-white/25 text-white py-1.5 px-3 rounded-xl hover:bg-white/40 transition"
+                className= {`${lexend.className}flex items-center gap-1.5 bg-white/25 text-white py-1.5 px-3 rounded-xl hover:bg-white/40 transition`}
               >
                 Sign Out
               </button>
             ) : (
               <Link
                 href="/auth/login"
-                className="flex items-center gap-1.5 bg-white/25 text-white py-1.5 px-6 rounded-xl hover:bg-white/40 transition"
+                className={`${lexend.className}flex items-center gap-1.5 bg-white/25 text-white py-1.5 px-6 rounded-xl hover:bg-white/40 transition`}
               >
                 Sign In
               </Link>
@@ -341,17 +387,17 @@ export default function Navbar() {
 
       {/* POPUP */}
       {showPopup && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+        <div className={`${lexend.className} fixed inset-0 bg-black/50 flex items-center justify-center z-50`}>
           <div className="relative w-[520px] rounded-3xl shadow-xl text-center overflow-hidden bg-white/80 backdrop-blur-xl">
             <div className="pt-10 pb-4">
-              <h2 className=" font-bold text-[#E07502]">
+              <h2 className=" font-bold text-[#E07502] text-2xl">
                 จะไปจริงๆหรอ Meow
               </h2>
 
-              <div className="flex justify-center gap-4 mt-6">
+              <div className="flex justify-center gap-4 mt-10">
                 <button
                   onClick={cancelLogout}
-                  className="px-8 py-3 bg-white text-gray-700 rounded-xl shadow"
+                  className="px-8 py-3 bg-white text-[#425B80] rounded-xl shadow"
                 >
                   ยกเลิก
                 </button>

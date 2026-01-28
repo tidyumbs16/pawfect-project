@@ -2,6 +2,13 @@
 
 import { useState } from "react";
 import { supabase } from "@/lib/supabase-client";
+import { Lexend } from "next/font/google";
+
+const lexend = Lexend({ 
+  weight: '400', 
+  subsets: ['latin'],
+  display: 'swap',
+});
 
 interface Profile {
   id: string;
@@ -16,7 +23,7 @@ interface Profile {
 interface EditPanelProps {
   profile: Profile;
   setShowEdit: (show: boolean) => void;
- selectedFile: File | null;
+  selectedFile: File | null;
   setProfile: (profile: Profile) => void;
 }
 
@@ -75,12 +82,8 @@ export default function EditPanel({ profile, setShowEdit,  setProfile, selectedF
     birthdate: profile.birthdate || "",
   });
   
-
-
-
   const [loading, setLoading] = useState(false);
 
-  
   // ฟังก์ชันเปลี่ยนค่า Text Input
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
@@ -113,8 +116,6 @@ export default function EditPanel({ profile, setShowEdit,  setProfile, selectedF
             sendData.append("avatar_url", selectedFile);
             console.log("📦 กำลังส่งไฟล์รูป:", selectedFile.name);
       }
-      
-     
 
       console.log("Sending data...", Object.fromEntries(sendData)); // เช็คดูว่าข้อมูลถูกส่งมั้ย
 
@@ -127,7 +128,6 @@ export default function EditPanel({ profile, setShowEdit,  setProfile, selectedF
       const result = await res.json();
 
       if (res.ok) {
-       
         // 🔥 บังคับ Reload หน้าเว็บเพื่อให้ข้อมูลอัปเดตแน่นอน 100%
         window.location.reload(); 
       } else {
@@ -141,16 +141,15 @@ export default function EditPanel({ profile, setShowEdit,  setProfile, selectedF
     }
   };
 
-  const inputBaseClass = "w-full bg-gray-100 border-none rounded-xl px-4 py-3 text-gray-700  outline-none transition-shadow";
-  const labelBaseClass = "text-slate-600 font-bold text-base md:text-lg";
+  const inputBaseClass = "w-full bg-gray-100 border-none rounded-xl px-4 py-3 text-[#425B80]  outline-none transition-shadow";
+  const labelBaseClass = "text-[#425B80] font-bold  md:text-lg";
 
   return (
-    <div className="bg-white rounded-[0.5rem] w-full max-w-2xl p-8 md:p-12 border border-white shadow-[0_20px_50px_rgba(0,0,0,0.1)] ml-14">
+    // แทรก lexend.className เข้าไปใน class ของ div หลัก
+    <div className={`${lexend.className} bg-white rounded-[0.5rem] w-full max-w-2xl p-8 md:p-12 border border-white transition shadow-[1px_5px_4px_] shadow-[#9C9C9C]/80 ml-14`}>
       <h2 className="text-3xl font-black text-slate-700 mb-10">ข้อมูลของฉัน</h2>
 
       <form onSubmit={handleSubmit} className="space-y-8">
-
-        
         
         {/* Username */}
         <div className="grid grid-cols-1 md:grid-cols-[180px_1fr] items-center gap-4">
@@ -226,26 +225,26 @@ export default function EditPanel({ profile, setShowEdit,  setProfile, selectedF
           />
         </div>
 
-<div className="flex flex-col md:flex-row justify-center items-center gap-4 pt-3">
-  {/* ปุ่มบันทึก */}
-  <button
-    type="submit"
-    disabled={loading}
-    className=" bg-[#FA9529] text-white font-black py-3 px-13 rounded-xl shadow-lg  "
-  >
-    {loading ? "กำลังบันทึก..." : "บันทึก"}
-  </button>
+        <div className="flex flex-col md:flex-row justify-center items-center gap-4 pt-3">
+          {/* ปุ่มบันทึก */}
+          <button
+            type="submit"
+            disabled={loading}
+            className=" bg-[#FA9529] text-white font-black py-3 px-13 rounded-xl transition shadow-[1px_5px_4px_] shadow-[#9C9C9C]/80  "
+          >
+            {loading ? "กำลังบันทึก..." : "บันทึก"}
+          </button>
 
-  {/* ปุ่มยกเลิก (ย้ายเข้ามาข้างใน div นี้) */}
-  <button
-    type="button"
-    onClick={() => setShowEdit(false)}
-    className="px-12 py-3 rounded-xl font-bold text-[#425B80]  border border-white shadow-lg"
-  >
-    ยกเลิก
-  </button>
-</div>
-       
+          {/* ปุ่มยกเลิก (ย้ายเข้ามาข้างใน div นี้) */}
+          <button
+            type="button"
+            onClick={() => setShowEdit(false)}
+            className="px-12 py-3 rounded-xl font-bold text-[#425B80]  border border-white transition shadow-[1px_5px_4px_] shadow-[#9C9C9C]/80"
+          >
+            ยกเลิก
+          </button>
+        </div>
+        
       </form>
     </div>
   );
