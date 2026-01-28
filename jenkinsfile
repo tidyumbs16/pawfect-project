@@ -1,38 +1,53 @@
 pipeline {
     agent any
 
+    environment {
+        BUN_PATH = 'C:\\bun\\bun.exe'
+    }
+
     stages {
-
-        stage('Checkout') {
+        stage('Fast Install') {
             steps {
-                git(
-                    url: 'https://github.com/tidyumbs16/pawfect-project.git',
-                    branch: 'main',
-                    credentialsId: 'tidyumbs16'
-                )
+                bat """
+                    @echo off
+                    echo --- [Checking version] ---
+                    findstr "version" package.json
+                    
+                    echo --- [Smart Install] ---
+                    :: ใช้ --frozen-lockfile เพื่อให้ลงไวขึ้นและเช็คความถูกต้อง
+                    "${BUN_PATH}" install --frozen-lockfile
+                """
             }
         }
 
-        stage('Install Dependencies') {
-            steps {
-                bat 'bun install'
+        stage('Parallel Quality Check') {
+            // รัน Test และ Lint ไปพร้อมๆ กัน ไม่ต้องรอกัน
+            parallel {
+                stage('Unit Test') {
+                    steps {
+                        bat '"${BUN_PATH}" test'
+                    }
+                }
+                stage('Lint Check') {
+                    steps {
+                        // เช็ค Format โค้ด (ถ้ามึงมี) จะได้รู้ว่างานเนี๊ยบไหม
+                        bat '"${BUN_PATH}" x next lint'
+                    }
+                }
             }
         }
 
-        stage('Build Next.js') {
+        stage('Quick Build') {
             steps {
-                // bun x will find next.js binary automatically
-                bat 'bun x next build'
+                // Next.js จะใช้ Cache จากรอบก่อนหน้าโดยอัตโนมัติถ้ามึงไม่ลบโฟลเดอร์ .next ทิ้ง
+                bat '"${BUN_PATH}" x next build'
             }
         }
     }
 
     post {
-        success {
-            echo "🎉 Build Success!"
-        }
-        failure {
-            echo "❌ Build Failed"
+        always {
+            echo 'Finished Check.'
         }
     }
 }
