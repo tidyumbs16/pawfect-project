@@ -10,16 +10,15 @@ datasource db {
 }
 
 model profiles {
-  id         String      @id @db.Uuid
-  username   String
-  avatar_url String?
-  bio        String?
-  created_at DateTime?   @default(now()) @db.Timestamptz(6)
-  gender     String?
-  birthdate  DateTime?   @db.Date
-  favorites  favorites[]
-
+  id                      String                    @id @db.Uuid
+  username                String
+  avatar_url              String?
+  bio                     String?
+  created_at              DateTime?                 @default(now()) @db.Timestamptz(6)
+  gender                  String?
+  birthdate               DateTime?                 @db.Date
   dismissed_notifications dismissed_notifications[]
+  favorites               favorites[]
 
   @@map("profiles")
   @@schema("public")
@@ -40,14 +39,14 @@ model Pet {
 }
 
 model Diary {
-  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  pet_id     String    @db.Uuid
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  pet_id     String   @db.Uuid
   title      String
   content    String?
   image_urls String[]
-  created_at  DateTime @default(now())
- log_date    DateTime @db.Date      
-  pet        Pet       @relation(fields: [pet_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  log_date   DateTime @db.Date
+  created_at DateTime @default(now())
+  pet        Pet      @relation(fields: [pet_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@map("diaries")
   @@schema("public")
@@ -61,17 +60,21 @@ model favorites {
   pet_names  pet_names? @relation(fields: [name_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
   profiles   profiles?  @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
+  @@unique([user_id, name_id], map: "unique_user_name_favorite")
   @@map("favorites")
   @@schema("public")
 }
 
 model pet_names {
   id         BigInt      @id @default(autoincrement())
-  name       String
+  name       String      @unique(map: "unique_pet_name")
   meaning    String?
   type       String
   popularity Int?        @default(0)
   created_at DateTime?   @default(now()) @db.Timestamptz(6)
+  name_th    String?
+  name_en    String?
+  total_hits Int?        @default(0)
   favorites  favorites[]
 
   @@map("pet_names")
@@ -96,13 +99,13 @@ model appointments {
 }
 
 model dismissed_notifications {
-  id             String   @id @default(uuid())
-  user_id        String   @db.Uuid
-  appointment_id String   @db.Uuid
-  dismissed_at   DateTime @default(now())
-is_deleted Boolean @default(false)
-  user        profiles     @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  appointment appointments @relation(fields: [appointment_id], references: [id], onDelete: Cascade)
+  id             String       @id @default(uuid())
+  dismissed_at   DateTime     @default(now())
+  user_id        String       @db.Uuid
+  appointment_id String       @db.Uuid
+  is_deleted     Boolean      @default(false)
+  appointment    appointments @relation(fields: [appointment_id], references: [id], onDelete: Cascade)
+  user           profiles     @relation(fields: [user_id], references: [id], onDelete: Cascade)
 
   @@unique([user_id, appointment_id])
   @@schema("public")
