@@ -14,7 +14,7 @@ pipeline {
                     findstr "version" package.json
                     
                     echo --- [Smart Install] ---
-                    :: ใช้ --frozen-lockfile เพื่อให้ลงไวขึ้นและเช็คความถูกต้อง
+                    :: 
                     "${BUN_PATH}" install --frozen-lockfile
                 """
             }
