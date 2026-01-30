@@ -57,50 +57,126 @@ interface PetNameSuggestion {
   meaning: string;
 }
 
-// --- AI Response Parser (ปรับให้ดึง Tag แม่นขึ้น) ---
-const parseAIResponse = (text: string | undefined): IPetNameSuggestion[] => {
-  if (!text) return [];
-  const suggestions: IPetNameSuggestion[] = [];
-  const lines = text.split("\n");
+const extractTagsFromUserMessage = (userMessage: string): string => {
+  const styleKeywords = [
+    "เท่", "น่ารัก", "ขรึม", "แข็งแกร่ง", "น่าเกรงขาม", "สง่า", "ดุดัน",
+    "ซน", "ซุกซน", "ร่าเริง", "สดใส", "เฉียบขาด", "กล้าหาญ", "อ่อนโยน",
+    "เรียบหรู", "ทันสมัย", "คลาสสิค", "ไทยๆ", "ญี่ปุ่น", "เกาหลี", "จีน",
+    "ขี้อ้อน", "น่ากอด", "แสบ", "ดุร้าย", "cool", "cute", "strong", "fierce"
+  ];
 
-  // Regex ตัวนี้กูแก้ให้ "ใจดี" ขึ้น:
-  // 1. รองรับดอกจันครอบชื่อ (**Maverick**)
-  // 2. รองรับตัวคั่นทั้ง [ ] หรือ - หรือ :
-  const regex = /^\d+\.\s*(?:\*\*)?([^*\[\-\:]+?)(?:\*\*)?\s*(?:\[([^\]]+)\]|[\-\:])\s*(.+)/;
+  const foundTags: string[] = [];
+  const lowerMessage = userMessage.toLowerCase();
 
-  lines.forEach((line) => {
-    const match = line.trim().match(regex);
-    if (match) {
-      const rawName = match[1].trim();
-      const tag = match[2] ? match[2].trim() : "แนะนำ"; 
-     const meaning = match[3].replace(/\*\*/g, "").trim();
-
-      // แยกชื่อไทย/อังกฤษ
-      const engMatch = rawName.match(/[a-zA-Z]+/);
-      const nameEn = engMatch ? engMatch[0].trim() : "";
-      const thMatch = rawName.match(/[ก-๙]+/);
-      const nameTh = thMatch ? thMatch[0].trim() : "";
-
-      // 🛑 ส่วนดักจับ: ถ้ามีคำพวกนี้ "ห้าม" ทำการ์ด (กันพวกคำแนะนำแพทย์)
-      const medicalKeywords = ["งดอาหาร", "สังเกตอาการ", "หาหมอ", "รักษา", "ฉุกเฉิน", "แพทย์", "ป่วย", "ยา", "วัคซีน" ,"ผ่าตัด", "ติดเชื้อ", "สุขภาพ" ,"อาการ" ,"วินิจฉัย" ,"วางยา", "ห้องฉุกเฉิน" ,"ตรวจเลือด" ,"แผล" ,"พยาบาล" ,"การดูแล" ,
-        "การรักษา","สวัสดี","ขอปรึกษา","มีไข้","เจ็บป่วย", "ปวดท้อง", "อาเจียน", "ท้องเสีย", "ซึมเศร้า", "เบื่ออาหาร", "หายใจลำบาก", "แพ้ยา", "บาดเจ็บ"
-
-      ];
-      const isMedical = medicalKeywords.some(word => line.includes(word));
-
-      if (nameTh && !isMedical) {
-        suggestions.push({
-          nameTh: nameTh,
-          nameEn: nameEn,
-          tag: tag,
-          meaning: meaning,
-        });
-      }
+  styleKeywords.forEach(keyword => {
+    if (lowerMessage.includes(keyword.toLowerCase())) {
+      foundTags.push(keyword);
     }
   });
 
+  return foundTags.length > 0 ? foundTags.join(" / ") : "แนะนำ";
+};
+
+const parseAIResponse = (
+  text: string | undefined,
+  userMessage: string = ""
+): IPetNameSuggestion[] => {
+  if (!text) return [];
+  
+  console.log("🔍 AI Response:", text);
+  console.log("👤 User Message:", userMessage);
+  
+  const suggestions: IPetNameSuggestion[] = [];
+  const lines = text.split("\n");
+
+  const userTags = extractTagsFromUserMessage(userMessage);
+  console.log("🏷️ Extracted Tags:", userTags);
+
+  lines.forEach((line, index) => {
+    let nameEn = "";
+    let nameTh = "";
+    let meaning = "";
+    let match;
+
+    // ✅ รูปแบบที่ 1: 1. **ชื่ออังกฤษ (ชื่อไทย)** - ความหมาย
+    match = line.trim().match(/^\d+\.\s*\*\*([a-zA-Z]+)\s*\(([ก-๙]+)\)\*\*[\s]*[–\-:]\s*(.+)/);
+    
+    if (match) {
+      nameEn = match[1].trim();
+      nameTh = match[2].trim();
+      meaning = match[3].trim();
+      console.log(`✅ Format 1 (Num-En-Th): ${nameEn} (${nameTh})`);
+    } else {
+      // ✅ รูปแบบที่ 2: 1. **ชื่อไทย (ชื่ออังกฤษ)** - ความหมาย
+      match = line.trim().match(/^\d+\.\s*\*\*([ก-๙]+)\s*\(([a-zA-Z]+)\)\*\*[\s]*[–\-:]\s*(.+)/);
+      
+      if (match) {
+        nameTh = match[1].trim();
+        nameEn = match[2].trim();
+        meaning = match[3].trim();
+        console.log(`✅ Format 2 (Num-Th-En): ${nameTh} (${nameEn})`);
+      } else {
+        // ✅ รูปแบบที่ 3: * **ชื่ออังกฤษ (ชื่อไทย):** ความหมาย
+        match = line.trim().match(/^\*\s+\*\*([a-zA-Z]+)\s*\(([ก-๙]+)\)\*\*[\s]*[:\-]\s*(.+)/);
+        
+        if (match) {
+          nameEn = match[1].trim();
+          nameTh = match[2].trim();
+          meaning = match[3].trim();
+          console.log(`✅ Format 3 (Bullet-En-Th): ${nameEn} (${nameTh})`);
+        } else {
+          // ✅ รูปแบบที่ 4: * **ชื่อไทย (ชื่ออังกฤษ):** ความหมาย
+          match = line.trim().match(/^\*\s+\*\*([ก-๙]+)\s*\(([a-zA-Z]+)\)\*\*[\s]*[:\-]\s*(.+)/);
+          
+          if (match) {
+            nameTh = match[1].trim();
+            nameEn = match[2].trim();
+            meaning = match[3].trim();
+            console.log(`✅ Format 4 (Bullet-Th-En): ${nameTh} (${nameEn})`);
+          }
+        }
+      }
+    }
+
+    if (nameTh && nameEn) {
+      console.log(`🔤 nameEn: "${nameEn}"`);
+      console.log(`🇹🇭 nameTh: "${nameTh}"`);
+      console.log(`📝 meaning: "${meaning}"`);
+
+      const medicalKeywords = [
+        "งดอาหาร", "สังเกตอาการ", "หาหมอ", "รักษา", "ฉุกเฉิน", "แพทย์", 
+        "ป่วย", "ยา", "วัคซีน", "ผ่าตัด", "ติดเชื้อ", "สุขภาพ", "อาการ", 
+        "วินิจฉัย", "วางยา", "ห้องฉุกเฉิน", "ตรวจเลือด", "แผล", "พยาบาล", 
+        "การดูแล", "การรักษา", "ขอปรึกษา", "มีไข้", "เจ็บป่วย", 
+        "ปวดท้อง", "อาเจียน", "ท้องเสีย", "ซึมเศร้า", "เบื่ออาหาร", 
+        "หายใจลำบาก", "แพ้ยา", "บาดเจ็บ", "คำแนะนำ", "ควร", "ไม่ควร"
+      ];
+      
+      const checkText = `${line} ${meaning}`.toLowerCase();
+      const isMedical = medicalKeywords.some(word => 
+        checkText.includes(word.toLowerCase())
+      );
+
+      if (!isMedical) {
+        suggestions.push({
+          nameTh: nameTh,
+          nameEn: nameEn,
+          tag: userTags,
+          meaning: meaning,
+        });
+        console.log(`✅ Added: ${nameTh} (${nameEn}) - Tag: ${userTags}`);
+      } else {
+        console.log(`❌ Skipped - Medical: ${isMedical}`);
+      }
+    } else {
+      console.log(`❌ Line ${index} NOT matched:`, line);
+    }
+  });
+
+  console.log("📊 Total suggestions:", suggestions.length);
   return suggestions.slice(0, 3);
 };
+
 const NameCard = ({
   nameTh,
   nameEn,
@@ -411,33 +487,23 @@ export default function ChatbotUI() {
       });
 
       
+// ✅ ในส่วนสุดท้ายของ handleSend แก้เหลือแค่นี้พอ:
 const data = await res.json();
-    const aiText = data?.text || "";
+const aiText = data?.text || "";
 
-    // 1. แงะชื่อออกมาก่อน
-    const suggestions = parseAIResponse(aiText);
+// แงะชื่อออกมาเลย
+ const suggestions = parseAIResponse(aiText, textToSend);
+const hasNames = suggestions.length > 0;
 
-    // 2. เช็คว่ามันคือการ "ถามคำถาม" จริง ๆ หรือเปล่า (ไม่ใช่แค่มีคำว่าสไตล์เฉยๆ)
-    // ถ้ามีชื่อ (suggestions.length > 0) แปลว่า AI ตั้งใจเสนอชื่อแล้ว ให้ข้ามการดักคำถามไปเลย
-    const hasNames = suggestions.length > 0;
-    
-    // ถ้าไม่มีชื่อ และมีคำถามพวกนี้ ถึงจะเรียกว่า isAskingQuestions
-    const isAskingQuestions = !hasNames && (
-      aiText.includes("?") || 
-      aiText.includes("บอกสไตล์") || 
-      aiText.includes("เพศอะไร")
-    );
-
-    setMessages((prev) => [
-      ...prev,
-      {
-        role: "model",
-        text: aiText,
-        // ✅ ถ้าแงะเจอชื่อ และไม่ใช่ช่วงถามคำถาม -> การ์ดโผล่!
-        suggestions: hasNames && !isAskingQuestions ? suggestions : undefined,
-      },
-    ]);
-
+setMessages((prev) => [
+  ...prev,
+  {
+    role: "model",
+    text: aiText,
+    // ✅ แค่แงะเจอชื่อ (hasNames) ก็โชว์การ์ดเลย ไม่ต้องไปดักคำถามซ้อนให้งงสัส!
+    suggestions: hasNames ? suggestions : undefined,
+  },
+]);
 
 
       setHistory((prev) => [

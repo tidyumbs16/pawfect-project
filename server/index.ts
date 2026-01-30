@@ -73,7 +73,7 @@ listModels();
 
 
 const model = genAI.getGenerativeModel({ 
-  model: "gemini-3-flash-preview" 
+  model: "gemini-robotics-er-1.5-preview" 
 });
 
 console.log("✅ Pawfect AI System Ready ");
@@ -1115,7 +1115,7 @@ gte: todayStart, // นับเฉพาะนัดหมายที่ยั
     contents.push({ role: "user", parts: currentParts });
 
     const response = await fetch(
-  `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${API_KEY}`,
+  `https://generativelanguage.googleapis.com/v1beta/models/gemini-robotics-er-1.5-preview:generateContent?key=${API_KEY}`,
   {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -1201,7 +1201,7 @@ gte: todayStart, // นับเฉพาะนัดหมายที่ยั
         }`;
 
         const response = await fetch(
-          `https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent?key=${API_KEY}`,
+          `https://generativelanguage.googleapis.com/v1beta/models/gemini-robotics-er-1.5-preview:generateContent?key=${API_KEY}`,
           {
             method: "POST",
             headers: { "Content-Type": "application/json" },
