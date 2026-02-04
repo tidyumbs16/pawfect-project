@@ -98,47 +98,61 @@ const parseAIResponse = (
     let meaning = "";
     let match;
 
-    // ✅ รูปแบบที่ 1: 1. **ชื่ออังกฤษ (ชื่อไทย)** - ความหมาย
-    match = line.trim().match(/^\d+\.\s*\*\*([a-zA-Z]+)\s*\(([ก-๙]+)\)\*\*[\s]*[–\-:]\s*(.+)/);
+    // ✅ กรณีที่ 1: มีชื่อไทยในวงเล็บ **Name (ชื่อไทย):** ความหมาย
+    match = line.trim().match(/^[\d*\-•]*[\.\)]*\s*\*\*([^*\(]+?)\s*\(([^\)]+?)\)\*\*[\s]*[:\-–—]+\s*(.+)/);
     
     if (match) {
-      nameEn = match[1].trim();
-      nameTh = match[2].trim();
-      meaning = match[3].trim();
-      console.log(`✅ Format 1 (Num-En-Th): ${nameEn} (${nameTh})`);
+      const name1 = match[1].trim();
+      const name2 = match[2].trim();
+      const meaningText = match[3].trim();
+
+      // แยกว่าอันไหนเป็นไทย อันไหนเป็นอังกฤษ
+      const hasThaiChar1 = /[\u0E00-\u0E7F]/.test(name1);
+      const hasThaiChar2 = /[\u0E00-\u0E7F]/.test(name2);
+      const hasEngChar1 = /[a-zA-Z]/.test(name1);
+      const hasEngChar2 = /[a-zA-Z]/.test(name2);
+
+      if (hasEngChar1 && hasThaiChar2) {
+        nameEn = name1;
+        nameTh = name2;
+      } else if (hasThaiChar1 && hasEngChar2) {
+        nameTh = name1;
+        nameEn = name2;
+      } else {
+        if (hasEngChar1) nameEn = name1;
+        if (hasThaiChar1) nameTh = name1;
+        if (hasEngChar2) nameEn = nameEn || name2;
+        if (hasThaiChar2) nameTh = nameTh || name2;
+      }
+
+      meaning = meaningText;
+      console.log(`✅ Format with () matched: "${name1}" + "${name2}"`);
     } else {
-      // ✅ รูปแบบที่ 2: 1. **ชื่อไทย (ชื่ออังกฤษ)** - ความหมาย
-      match = line.trim().match(/^\d+\.\s*\*\*([ก-๙]+)\s*\(([a-zA-Z]+)\)\*\*[\s]*[–\-:]\s*(.+)/);
+      // ✅ กรณีที่ 2: ไม่มีวงเล็บ **Name:** ความหมาย
+      match = line.trim().match(/^[\d*\-•]*[\.\)]*\s*\*\*([^*:]+?)\*\*[\s]*[:\-–—]+\s*(.+)/);
       
       if (match) {
-        nameTh = match[1].trim();
-        nameEn = match[2].trim();
-        meaning = match[3].trim();
-        console.log(`✅ Format 2 (Num-Th-En): ${nameTh} (${nameEn})`);
-      } else {
-        // ✅ รูปแบบที่ 3: * **ชื่ออังกฤษ (ชื่อไทย):** ความหมาย
-        match = line.trim().match(/^\*\s+\*\*([a-zA-Z]+)\s*\(([ก-๙]+)\)\*\*[\s]*[:\-]\s*(.+)/);
-        
-        if (match) {
-          nameEn = match[1].trim();
-          nameTh = match[2].trim();
-          meaning = match[3].trim();
-          console.log(`✅ Format 3 (Bullet-En-Th): ${nameEn} (${nameTh})`);
-        } else {
-          // ✅ รูปแบบที่ 4: * **ชื่อไทย (ชื่ออังกฤษ):** ความหมาย
-          match = line.trim().match(/^\*\s+\*\*([ก-๙]+)\s*\(([a-zA-Z]+)\)\*\*[\s]*[:\-]\s*(.+)/);
-          
-          if (match) {
-            nameTh = match[1].trim();
-            nameEn = match[2].trim();
-            meaning = match[3].trim();
-            console.log(`✅ Format 4 (Bullet-Th-En): ${nameTh} (${nameEn})`);
-          }
+        const name = match[1].trim();
+        const meaningText = match[2].trim();
+
+        // เช็คว่าเป็นภาษาอะไร
+        const hasThaiChar = /[\u0E00-\u0E7F]/.test(name);
+        const hasEngChar = /[a-zA-Z]/.test(name);
+
+        if (hasEngChar) {
+          nameEn = name;
+          nameTh = name; // ใช้ชื่อเดียวกันถ้าไม่มีชื่อไทย
+        } else if (hasThaiChar) {
+          nameTh = name;
+          nameEn = name; // ใช้ชื่อเดียวกันถ้าไม่มีชื่ออังกฤษ
         }
+
+        meaning = meaningText;
+        console.log(`✅ Format without () matched: "${name}"`);
       }
     }
 
-    if (nameTh && nameEn) {
+    if ((nameTh || nameEn) && meaning) {
       console.log(`🔤 nameEn: "${nameEn}"`);
       console.log(`🇹🇭 nameTh: "${nameTh}"`);
       console.log(`📝 meaning: "${meaning}"`);
@@ -159,12 +173,12 @@ const parseAIResponse = (
 
       if (!isMedical) {
         suggestions.push({
-          nameTh: nameTh,
-          nameEn: nameEn,
+          nameTh: nameTh || nameEn, // ถ้าไม่มีชื่อไทยให้ใช้อังกฤษแทน
+          nameEn: nameEn || nameTh, // ถ้าไม่มีชื่ออังกฤษให้ใช้ไทยแทน
           tag: userTags,
           meaning: meaning,
         });
-        console.log(`✅ Added: ${nameTh} (${nameEn}) - Tag: ${userTags}`);
+        console.log(`✅ Added: ${nameTh || nameEn} (${nameEn || nameTh}) - Tag: ${userTags}`);
       } else {
         console.log(`❌ Skipped - Medical: ${isMedical}`);
       }
