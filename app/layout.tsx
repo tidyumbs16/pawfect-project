@@ -23,9 +23,9 @@ const lexend = Lexend({
 });
 
 export const metadata: Metadata = {
-  title: "Pawfect AI",
+  title: "Pawfect Name",
   icons: {
-    icon: "/favicon.png", // ✅ ใส่ path รูปไอคอนที่มึงวางไว้ใน public
+    icon: "/iconweb.png", // ✅ ใส่ path รูปไอคอนที่มึงวางไว้ใน public
   },
 };
 export default function RootLayout({
