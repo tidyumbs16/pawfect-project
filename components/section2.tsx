@@ -26,7 +26,7 @@ const Section2 = () => {
     }
   ];
 
-  const [openIndex, setOpenIndex] = useState([0, 1, 2]);
+ const [openIndex, setOpenIndex] = useState<number[]>([]);
 
   const toggleAccordion = (index: number) => {
     if (openIndex.includes(index)) {

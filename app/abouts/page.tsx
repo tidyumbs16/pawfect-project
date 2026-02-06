@@ -151,55 +151,58 @@ export default function AboutUsPage() {
           </div>
 
           {/* Grid ทีมงาน 2 คน (Full Stack & UI/UX) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-16 md:gap-4 max-w-5xl mx-auto  mt-10">
-            
-            {/* คนที่ 1: Full Stack Developer */}
-            <div className="flex flex-col items-center group">
-              <div className="relative w-full aspect-square max-w-[400px] mb-8 ">
-                <Image
-                  src="/fullst.png" // ใช้ไฟล์ที่มึงอัปโหลดมา
-                  alt="Full Stack Developer Doodle"
-                  fill
-                  className="object-contain"
-                />
-              </div>
-              <h3 className="text-[#425B80] text-xl font-bold mb-6">Full Stack Developer</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-16 md:gap-4 max-w-5xl mx-auto mt-10 items-end"> 
+  {/* 👆 ใส่ items-end เพื่อให้ฐานของรูปทุกใบวางอยู่บนระนาบเดียวกันเป๊ะ */}
+
+  {/* คนที่ 1: Full Stack Developer */}
+  <div className="flex flex-col items-center group">
+    {/* ✅ กำหนดความสูง h-[270px] ให้เท่ากันทั้งสองฝั่ง */}
+    <div className="relative w-full h-[270px] max-w-[350px] mb-8">
+      <Image
+        src="/fullst.png"
+        alt="Full Stack Developer Doodle"
+        fill
+        className="object-contain object-bottom" // ✅ บังคับให้รูปชิดขอบล่างของกรอบ
+      />
+    </div>
+    <h3 className="text-[#425B80] text-xl font-bold mb-6">Full Stack Developer</h3>
               
               {/* Social Icons */}
               <div className="flex gap-3">
-                <a href="#" className="w-6 h-6 hover:opacity-80 transition-opacity">
+                <a href="https://www.facebook.com/suraj.deemeesri.5/" className="w-6 h-6 hover:opacity-80 transition-opacity">
                   <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" alt="Facebook" />
                 </a>
-                <a href="#" className="w-6 h-6 hover:opacity-80 transition-opacity">
+                <a href="https://www.instagram.com/tawxn.d/" className="w-6 h-6 hover:opacity-80 transition-opacity">
                   <img src="https://upload.wikimedia.org/wikipedia/commons/e/e7/Instagram_logo_2016.svg" alt="Instagram" />
                 </a>
-                <a href="#" className="w-6 h-6 hover:opacity-80 transition-opacity">
+                <a href="https://github.com/tidyumbs16" className="w-6 h-6 hover:opacity-80 transition-opacity">
                   <img src="https://upload.wikimedia.org/wikipedia/commons/9/91/Octicons-mark-github.svg" alt="GitHub" />
                 </a>
               </div>
             </div>
 
             {/* คนที่ 2: UI/UX Designer */}
-            <div className="flex flex-col items-center group">
-              <div className="relative w-full aspect-square max-w-[400px] mb-8 ">
-                <Image
-                  src="/ux.png" // ใช้ไฟล์ที่มึงอัปโหลดมา
-                  alt="UI/UX Designer Doodle"
-                  fill
-                  className="object-contain"
-                />
-              </div>
-              <h3 className="text-[#3E5067] text-xl font-bold mb-6">UI/UX Designer</h3>
+<div className="flex flex-col items-center group">
+    {/* ✅ ใช้ความสูง h-[270px] และ max-w-[350px] เท่ากันเป๊ะ */}
+    <div className="relative w-full h-[270px] max-w-[350px] mb-8">
+      <Image
+        src="/ux2.png"
+        alt="UI/UX Designer Doodle"
+        fill
+        className="object-contain object-bottom" // ✅ ชิดขอบล่างเหมือนกันเพื่อให้ "เท้า" หรือฐานวางเท่ากัน
+      />
+    </div>
+    <h3 className="text-[#3E5067] text-xl font-bold mb-6">UI/UX Designer</h3>
               
               {/* Social Icons */}
               <div className="flex gap-3">
-                <a href="#" className="w-6 h-6 hover:opacity-80 transition-opacity">
+                <a href="https://www.facebook.com/fern.thipthanya" className="w-6 h-6 hover:opacity-80 transition-opacity">
                   <img src="https://upload.wikimedia.org/wikipedia/commons/b/b8/2021_Facebook_icon.svg" alt="Facebook" />
                 </a>
-                <a href="#" className="w-6 h-6 hover:opacity-80 transition-opacity">
+                <a href="https://www.instagram.com/_thipthanya/" className="w-6 h-6 hover:opacity-80 transition-opacity">
                   <img src="https://upload.wikimedia.org/wikipedia/commons/e/e7/Instagram_logo_2016.svg" alt="Instagram" />
                 </a>
-                <a href="#" className="w-6.5 h-6.5 p-[2px] border bg-[#3F3F3F] border-[#3F3F3F] rounded-full hover:opacity-80 transition-opacity flex items-center justify-center">
+                <a href="https://www.figma.com/@pato10" className="w-6.5 h-6.5 p-[2px] border bg-[#3F3F3F] border-[#3F3F3F] rounded-full hover:opacity-80 transition-opacity flex items-center justify-center">
     <img 
       src="https://upload.wikimedia.org/wikipedia/commons/3/33/Figma-logo.svg" 
       alt="Figma" 

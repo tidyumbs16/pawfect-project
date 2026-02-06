@@ -52,29 +52,30 @@ export default function PopularPage() {
   const [userId, setUserId] = useState<string | null>(null);
 
   useEffect(() => {
-    const init = async () => {
-      // 1. เช็ค Auth Session
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session) {
-        setUserId(session.user.id);
-        // ดึงรายการที่ USER คนนี้กด Like ไว้แล้ว
-        const { data: favs } = await supabase
-          .from('favorites')
-          .select('name_id')
-          .eq('user_id', session.user.id);
-        
-        if (favs) {
-          const favIds = (favs as IFavoriteRecord[]).map(f => f.name_id);
-          setUserFavorites(favIds);
-        }
-      }
+  const init = async () => {
+    // 1. เช็ค Auth Session (แยกไว้ทำเฉพาะตอนมีคน Login)
+    const { data: { session } } = await supabase.auth.getSession();
+    
+    if (session) {
+      setUserId(session.user.id);
+      // ดึงรายการที่ USER คนนี้กด Like ไว้ (ทำเฉพาะตอน Login)
+      const { data: favs } = await supabase
+        .from('favorites')
+        .select('name_id')
+        .eq('user_id', session.user.id);
       
-      // 2. ดึงข้อมูล Ranking
-      fetchRanking();
-    };
-    init();
-  }, []);
+      if (favs) {
+        const favIds = (favs as IFavoriteRecord[]).map(f => f.name_id);
+        setUserFavorites(favIds);
+      }
+    }
+    
 
+    await fetchRanking(); 
+  };
+  
+  init();
+}, []);
   const fetchRanking = async () => {
     try {
       const { data, error } = await supabase
@@ -105,7 +106,7 @@ export default function PopularPage() {
   };
 
   const handleToggleLike = async (item: IPetName) => {
-    // 1. เช็คก่อนว่า Login ยัง ถ้าไม่ไล่ไปหน้า Login
+  
     if (!userId) {
       router.push('/login');
       return;
@@ -178,20 +179,21 @@ export default function PopularPage() {
   if (loading) return <div className="min-h-screen flex items-center justify-center ">กำลังโหลดอันดับชื่อ...</div>;
 
   return (
-    <div className={`${lexend.className} min-h-screen bg-[#F8FAFC] py-12 px-4 flex flex-col items-center`}>
+    <div className={`${lexend.className} min-h-screen w-full bg-[#F8FAFC] py-12  flex flex-col items-center`}>
   <h1 className="text-4xl font-bold text-[#4A628A] mb-3">ชื่อสัตว์เลี้ยงยอดนิยม</h1>
   <h2 className=" text-[17px] text-[#4A628A] mb-8 font-normal">ชื่อที่ไ่ด้รับความนิยมสูงสุด</h2>
   
-  {/* ส่วนรูปภาพที่ขยายใหญ่ 900px และเต็มจอซ้ายขวา */}
-  <div className="relative w-screen h-[900px] mb-10 -mx-4"> 
+  <div className="relative w-full  -mt-23"> 
     <Image
-      src="/toptierpage.png"
+      src="/dogtier4.png"
       alt="Trophy"
-      fill 
-      className="object-cover object-center" 
+      width={2100}
+      height={700}
+      className="w-full " 
       priority 
     />
-  </div>
+</div>
+
 
       {/* --- UI TAB จากโค้ดมึง --- */}
       <div className={`${mallanna.className} w-full max-w-[1152px] h-[70px] mb-8 bg-white/50 border border-white p-1.5 rounded-xl shadow-xl`} >
@@ -222,6 +224,7 @@ export default function PopularPage() {
                 index={index}
                 nameTh={item.nameTh}
                 nameEn={item.nameEn}
+                userId={userId}
                 tag={item.tag}
                 meaning={item.meaning}
                 isAlreadyLiked={userFavorites.includes(item.id)}

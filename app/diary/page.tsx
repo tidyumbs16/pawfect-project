@@ -28,6 +28,7 @@ import { time } from "framer-motion";
 import Link from "next/link";
 import { useRouter } from 'next/navigation'; 
 import { Lexend } from "next/font/google";
+import NextImage from 'next/image';
 
 const lexend = Lexend({ 
   weight: '400', 
@@ -506,6 +507,8 @@ const [showDeletePetModal, setShowDeletePetModal] = useState(false);
       setDescription("");
       setDate("");
       setTime("");
+
+      window.location.reload();
     } catch (error) {
       console.error("Error saving appointment:", error);
       alert("บันทึกไม่สำเร็จ กรุณาลองใหม่");
@@ -917,7 +920,7 @@ const checkPetBeforeAction = (actionCallback: () => void): void => {
       หัวข้อ/กิจกรรม
     </label>
     <input
-      className="w-full bg-slate-100 p-4 rounded-[90px] mt-1 focus:outline-none mt-2"
+      className="w-full bg-slate-100 p-4 rounded-[90px] mt-1 focus:outline-none mt-2 text-[#425B80] "
       placeholder="เช่น วันนัดฉีดวัคซีน, วันนัดอาบน้ำ"
       value={title}
       onChange={(e) => setTitle(e.target.value)}
@@ -926,7 +929,7 @@ const checkPetBeforeAction = (actionCallback: () => void): void => {
       รายละเอียด
     </label>
     <textarea
-      className="w-full bg-slate-100 p-5 rounded-[30px] focus:outline-none mt-2"
+      className="w-full bg-slate-100 p-5 rounded-[30px] focus:outline-none mt-2 text-[#425B80] "
       rows={3}
       placeholder="รายละเอียดกิจกรรม"
       value={description}
@@ -938,7 +941,7 @@ const checkPetBeforeAction = (actionCallback: () => void): void => {
     <input
       type="date"
       placeholder="คลิกเพื่อเลือกวันที่"
-      className="w-full bg-slate-100 p-4 rounded-[90px] focus:outline-none mt-2"
+      className="w-full bg-slate-100 p-4 rounded-[90px] focus:outline-none mt-2 text-[#425B80] "
       value={date}
       onChange={(e) => setDate(e.target.value)}
     />
@@ -947,7 +950,7 @@ const checkPetBeforeAction = (actionCallback: () => void): void => {
     </label>
     <input
       type="time"
-      className="w-full bg-slate-100 p-4 rounded-[90px] focus:outline-none mt-2"
+      className="w-full bg-slate-100 p-4 rounded-[90px] focus:outline-none mt-2 text-[#425B80] "
       value={time}
       onChange={(e) => setTime(e.target.value)}
     />
@@ -1160,7 +1163,7 @@ ${
     {/* หัวข้อ */}
     <label className="text-2xl text-[#425B80] font-bold ml-5">สร้างโพสต์ใหม่</label>
     <input
-      className="w-full bg-slate-100 p-4 rounded-[90px] mt-1 focus:outline-none mt-5"
+      className="w-full bg-slate-100 p-4 rounded-[90px] mt-1 focus:outline-none mt-5 text-[#425B80] "
       placeholder="หัวข้อ"
       value={title}
       onChange={(e) => setTitle(e.target.value)}
@@ -1171,7 +1174,7 @@ ${
    
     </label>
     <textarea
-      className="w-full bg-slate-100 p-5 rounded-[30px] focus:outline-none mt-5"
+      className="w-full bg-slate-100 p-5 rounded-[30px] focus:outline-none mt-5 text-[#425B80] "
       rows={4}
       placeholder="เนื้อหา"
       value={content}
@@ -1185,7 +1188,7 @@ ${
     <input
       type="date"
       placeholder="คลิกเพื่อเลือกวันที่"
-      className="w-full bg-slate-100 p-4 rounded-[90px] focus:outline-none mt-5"
+      className="w-full bg-slate-100 p-4 rounded-[90px] focus:outline-none mt-5 text-[#425B80] "
       value={logDate}
       onChange={(e) => setLogDate(e.target.value)}
     />
@@ -1340,15 +1343,15 @@ ${
     className={`${lexend.className} fixed inset-0 bg-slate-900/50 z-50 flex items-center justify-center p-4`}
   >
     <div className="bg-white rounded-md w-full max-w-md p-12 flex flex-col items-center text-center relative cursor-default">
-      <div className="bg-[#FA9529] w-[85px] h-[85px] rounded-full flex items-center justify-center mb-8">
-        {/* ✅ ไอคอน: ปรับ strokeWidth ให้หนาขึ้น และใช้ transform ดึงขึ้นเล็กน้อย */}
-        <Info 
-          size={52} 
-          strokeWidth={2.5} 
-          className="text-white shrink-0" 
-          style={{ transform: 'translateY(-1px)' }} 
-        />
-      </div>
+      <div className="flex flex-col items-center justify-center w-full">
+  <NextImage
+    className="w-17 h-17 mb-7 object-contain"
+    src="/info2.png" 
+    alt="info icon"
+    width={64} // ปรับให้สัมพันธ์กับ className
+    height={64}
+  />
+</div>
 
       <h3 className="text-xl text-[#425B80] mb-2">
         Please Add Your Pet
@@ -1369,16 +1372,17 @@ ${
       className="bg-white rounded-[1rem] w-full max-w-[380px] px-8 py-8 flex flex-col items-center text-center shadow-2xl relative cursor-default"
       onClick={(e) => e.stopPropagation()}
     >
-      {/* 1. ส่วนไอคอน: ขนาด 20x20 กำลังสวยสำหรับกล่องขนาดนี้ */}
-      <div className="bg-[#FA9529] w-[85px] h-[85px] rounded-full flex items-center justify-center mb-8">
-        {/* ✅ ไอคอน: ปรับ strokeWidth ให้หนาขึ้น และใช้ transform ดึงขึ้นเล็กน้อย */}
-        <Info 
-          size={52} 
-          strokeWidth={2.5} 
-          className="text-white shrink-0" 
-          style={{ transform: 'translateY(-1px)' }} 
-        />
-      </div>
+     
+<div className="flex flex-col items-center justify-center w-full">
+  <NextImage
+    className="w-17 h-17 mb-7 object-contain"
+    src="/info2.png" 
+    alt="info icon"
+    width={64} // ปรับให้สัมพันธ์กับ className
+    height={64}
+  />
+</div>
+
 
       {/* 2. ส่วนข้อความ: ฟอนต์ 16px อ่านง่าย */}
       <h3 className="text-[16px] font-sm text-[#425B80] mb-8 leading-tight">
@@ -1416,20 +1420,18 @@ ${
     onClick={() => setShowDeletePetModal(false)}
   >
     <div 
-      // ✅ ใช้ max-w-[380px] ให้เป็นสี่เหลี่ยมผืนผ้าสวยๆ เหมือนตัวตะกี้
-      // ✅ ใช้ px-10 py-8 เพื่อให้พื้นที่ด้านข้างกว้างกว่าด้านบน-ล่าง (ทรงผืนผ้า)
       className="bg-white rounded-[1rem] w-full max-w-[380px] px-8 py-8 flex flex-col items-center text-center relative cursor-default"
       onClick={(e) => e.stopPropagation()}
     >
-      {/* 1. ส่วนไอคอน: วงกลมขนาดกำลังดี ไม่ใหญ่คับการ์ด */}
-      <div className="bg-[#FA9529] w-[85px] h-[85px] rounded-full flex items-center justify-center mb-8">
-        <Info 
-          size={52} 
-          strokeWidth={2.5} 
-          className="text-white shrink-0" 
-          style={{ transform: 'translateY(-1px)' }} 
-        />
-      </div>
+    <div className="flex flex-col items-center justify-center w-full">
+  <NextImage
+    className="w-17 h-17 mb-7 object-contain"
+    src="/info2.png" 
+    alt="info icon"
+    width={64} // ปรับให้สัมพันธ์กับ className
+    height={64}
+  />
+</div>
 
       {/* 2. ส่วนข้อความ: รักษาฟอนต์และสีเดิมของมึงไว้ */}
       <h3 className="text-[16px] font-sm text-[#425B80] mb-8 leading-tight">
@@ -1499,7 +1501,7 @@ ${
                   value={petName}
                   onChange={(e) => setPetName(e.target.value)}
                   placeholder="Please Enter Pet Nickname"
-                  className="w-full bg-gray-100 border-none rounded-xl px-4 py-3 text-gray-400 focus:none outline-none placeholder:text-gray-400 transition-all"
+                  className="w-full bg-gray-100 border-none rounded-xl px-4 py-3 text-gray-400 focus:none outline-none placeholder:text-gray-400 transition-all text-[#425B80] "
                 />
               </div>
 

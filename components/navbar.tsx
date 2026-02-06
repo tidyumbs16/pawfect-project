@@ -169,7 +169,14 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
-  const currentNotifications = notifications[activeTab];
+
+  const currentMonth = new Date().getMonth();
+  const currentYear = new Date().getFullYear();
+  const currentNotifications = notifications[activeTab]?.filter(notif => {
+  
+  const notifDate = new Date(notif.appointment_date); 
+  return notifDate.getMonth() === currentMonth && notifDate.getFullYear() === currentYear;
+});
 
   useEffect(() => {
     if (open && unreadCount > 0 && resetUnreadCount) {
@@ -183,7 +190,7 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="bg-[#F67F00] text-white w-full py-4 px-2 shadow-md">
+      <nav className="bg-[#F67F00] text-white w-full py-4 px-2 shadow-md z-50">
         <div className="flex items-center justify-between pl-10 pr-12">
           {/* LEFT */}
           <div className="flex items-center">

@@ -197,7 +197,7 @@ const handleRemoveExistingImage = (url: string) => {
           <div className="space-y-1.5">
             <label className="text-[#425B80] text-sm font-bold ml-1">หัวข้อ</label>
             <input
-              className="w-full bg-slate-100 p-4 rounded-[90px] mt-1 focus:outline-none mt-1"
+              className="w-full bg-slate-100 p-4 rounded-[90px] mt-1 focus:outline-none mt-1 text-[#425B80]"
               value={editTitle}
               onChange={(e) => setEditTitle(e.target.value)}
               placeholder="ตัวเลือก ชอบมปลามาเบา"
@@ -207,7 +207,7 @@ const handleRemoveExistingImage = (url: string) => {
           <div className="space-x-1.5">
             <label className="text-[#425B80] text-sm font-bold ml-1">เนื้อหา</label>
             <textarea
-              className="w-full bg-slate-100 p-10   rounded-[30px] focus:outline-none mt-1"
+              className="w-full bg-slate-100 p-10   rounded-[30px] focus:outline-none mt-1 text-[#425B80]"
               value={editContent}
               onChange={(e) => setEditContent(e.target.value)}
               placeholder="รายละเอียด"
@@ -219,7 +219,7 @@ const handleRemoveExistingImage = (url: string) => {
             <div className="relative">
               <input
                 type="date"
-               className="w-full bg-slate-100 p-4 rounded-[90px] focus:outline-none mt-2"
+               className="w-full bg-slate-100 p-4 rounded-[90px] focus:outline-none mt-2 text-[#425B80]"
                 value={editDate}
                 onChange={(e) => setEditDate(e.target.value)}
               />

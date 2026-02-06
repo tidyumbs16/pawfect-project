@@ -622,10 +622,10 @@ setMessages((prev) => [
             </span>
           </p>
         </div>
-        <div className="relative w-full h-[400px] md:h-[750px] mb-10">
+        <div className="relative w-full h-[400px] md:h-[740px] mb-10 -mt-20">
           <div className="absolute left-1/2 -translate-x-1/2 w-[98vw] h-full overflow-hidden">
             <Image
-              src="/aichat.png"
+              src="/aich2.png"
               alt="Banner"
               fill
               priority
@@ -648,70 +648,96 @@ setMessages((prev) => [
             <div className="w-screen ml-[calc(50%-50vw)] border-b border-slate-200 mt-4"></div>
           </div>
 
-          <div className="px-6 py-6 space-y-10">
-            {messages.length === 0 && (
-              <div className="flex items-center justify-center h-64 text-slate-400 italic">
-                Start a conversation now, or select a quick command below
-              </div>
+        <div className="px-6 py-6 space-y-10">
+  {messages.length === 0 && (
+    <div className="flex items-center justify-center h-64 text-slate-400">
+      Start a conversation now, or select a quick command below
+    </div>
+  )}
+  
+  {messages.map((msg, idx) => {
+    // 🔍 เช็คว่าข้อความนี้เป็นการแนะนำชื่อหรือไม่
+    const hasSuggestions = msg.suggestions && msg.suggestions.length > 0;
+    const isModel = msg.role === "model";
+
+    return (
+      <div
+        key={idx}
+        className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}
+      >
+        <div
+          className={`flex items-end gap-3 max-w-[90%] ${
+            msg.role === "user" ? "flex-row-reverse" : ""
+          }`}
+        >
+          {/* --- 1. Avatar Section --- */}
+          <div
+            className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 shadow-md ${
+              isModel ? "bg-[#00A9FF]" : "bg-white"
+            }`}
+          >
+            {isModel ? (
+              <Bot size={24} className="text-white" />
+            ) : (
+              <img
+                src={profile?.avatar_url || "/avatardefault.png"}
+                className="w-11 h-11 rounded-full object-cover"
+              />
             )}
-            {messages.map((msg, idx) => (
+          </div>
+
+          {/* --- 2. Content Section --- */}
+          <div className="relative flex flex-col gap-3">
+            
+            {/* 🟢 กรณีที่ 1: ข้อความฝั่ง User หรือ ข้อความ Model ที่ "ไม่ใช่" การแนะนำชื่อ (โชว์ Bubble ปกติ) */}
+            {(msg.role === "user" || !hasSuggestions) && (
               <div
-                key={idx}
-                className={`flex flex-col ${
-                  msg.role === "user" ? "items-end" : "items-start"
+                className={`p-4 rounded-3xl text-[15px] shadow-sm ${
+                  msg.role === "user"
+                    ? "bg-white text-slate-600 border border-slate-100 rounded-br-none"
+                    : "bg-[#00A9FF] text-white rounded-bl-none"
                 }`}
               >
-                <div
-                  className={`flex items-end gap-3 max-w-[85%] ${
-                    msg.role === "user" ? "flex-row-reverse" : ""
-                  }`}
-                >
-                  <div
-                    className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 shadow-md ${
-                      msg.role === "user" ? "bg-white" : "bg-[#00A9FF]"
-                    }`}
-                  >
-                    {msg.role === "model" ? (
-                      <Bot size={24} className="text-white" />
-                    ) : (
-                      <img
-                        src={profile?.avatar_url || "/avatardefault.png"}
-                        className="w-11 h-11 rounded-full object-cover"
-                      />
-                    )}
-                  </div>
-                  <div className="relative">
-                    <div
-                      className={`p-4 rounded-3xl text-[15px] shadow-sm ${
-                        msg.role === "user"
-                          ? "bg-white text-slate-600 border border-slate-100 rounded-br-none"
-                          : "bg-[#00A9FF] text-white rounded-bl-none"
-                      }`}
-                    >
-                      {msg.image && (
-                        <img
-                          src={msg.image}
-                          className="rounded-2xl mb-3 max-w-xs border-2 border-white"
-                        />
-                      )}
-                      <div className="whitespace-pre-wrap">{msg.text}</div>
-                    </div>
-                    {msg.suggestions && msg.suggestions?.length > 0 && (
-                      <div className="mt-6 flex gap-4 overflow-x-auto no-scrollbar py-4 px-2 -mx-2">
-                        {msg.suggestions.map((s, i) => (
-                          <NameCard
-                            key={i}
-                            {...s}
-                            isAlreadyLiked={likedNames.has(s.nameTh)}
-                            onLike={() => toggleFavorite(s)}
-                          />
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                </div>
+                {msg.image && (
+                  <img
+                    src={msg.image}
+                    className="rounded-2xl mb-3 max-w-xs border-2 border-white"
+                  />
+                )}
+                <div className="whitespace-pre-wrap">{msg.text}</div>
               </div>
-            ))}
+            )}
+
+            {/* 🟠 กรณีที่ 2: ข้อความฝั่ง Model ที่ "มี" suggestions (โชว์ Name Cards) */}
+            {isModel && msg.suggestions && msg.suggestions.length > 0 && (
+  <div className="flex flex-col gap-4">
+    <p className="text-[14px] font-black text-[#4A628A] ml-2 animate-pulse">
+      ✨ ฉันคัดชื่อสุดพิเศษมาให้แล้ว:
+    </p>
+    
+    <div className="flex gap-4 overflow-x-auto no-scrollbar py-2 px-2 -mx-2">
+      {/* ใช้วิธีเช็คก่อนว่ามี suggestions ถึงจะทำการ map */}
+      {msg.suggestions.map((s: IPetNameSuggestion, i: number) => (
+        <div key={i} className="shrink-0">
+          <NameCard
+            nameTh={s.nameTh}
+            nameEn={s.nameEn}
+            meaning={s.meaning}
+            tag={s.tag}
+            isAlreadyLiked={likedNames.has(s.nameTh)}
+            onLike={() => toggleFavorite(s)}
+          />
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+
+          </div>
+        </div>
+      </div>
+    );
+  })}
             {loading && (
               <div className="flex items-center gap-3">
                 <span className="w-2 h-2 bg-[#00A9FF] rounded-full animate-bounce"></span>

@@ -38,12 +38,12 @@ export default function NotificationItem({
   ? "bg-[#FDE8CD] w-full p-4 rounded-none transition-a"
   : "bg-white p-4  border-b border-gray-100";
 
-// 2. สีข้อความหัวข้อ: เน้นสีส้มเข้มขึ้นมานิดนึงเพื่อให้ล้อกับพื้นหลัง
+
 const titleClass = isHighlighted
   ? "text-[#FA9529] font-bold text-lg" 
   : " font-semibold text-lg text-[#FA9529]";
 
-// 3. รายละเอียดด้านล่าง (วันที่/เวลา):
+
 const detailTextClass = isHighlighted 
   ? "text-[#FA9529] " 
   : "text-[#FA9529]";  

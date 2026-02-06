@@ -92,7 +92,6 @@ const AuthForm = () => {
       options: { shouldCreateUser: false },
     });
     if (error) alert("ส่งไม่ผ่าน: " + error.message);
-    else alert("ส่งรหัสใหม่ไปแล้ว! กรุณาเช็คอีเมล");
   };
 
   const switchView = (newView: string) => {
@@ -177,8 +176,6 @@ const AuthForm = () => {
         if (error) {
           alert("Failed to reset password: " + error.message);
         } else {
-          alert("Password updated successfully! Please login again.");
-          // Logout เพื่อให้ user login ใหม่ด้วยรหัสใหม่ (หรือจะ redirect เข้าเว็บเลยก็ได้)
           await supabase.auth.signOut();
           switchView("login");
         }
@@ -220,7 +217,6 @@ const AuthForm = () => {
           alert("สมัครสมาชิกไม่สำเร็จ: " + (data.message || "Unknown error"));
           return;
         }
-        alert("สมัครสำเร็จ! โปรดเข้าสู่ระบบ");
         switchView("login");
       }
     } catch (err) {

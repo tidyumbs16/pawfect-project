@@ -10,11 +10,11 @@ interface RankCardProps {
   meaning: string;
   isAlreadyLiked: boolean;
   onLike: () => void;
+  userId?: string | null;
 }
 
-const RankCard = ({ index, nameTh, nameEn, tag, meaning, isAlreadyLiked, onLike }: RankCardProps) => {
-  
-  // 🔥 Logic การแท็ก (เหมือนเดิมเป๊ะ)
+const RankCard = ({ index, nameTh, nameEn, tag, meaning, isAlreadyLiked, onLike, userId }: RankCardProps) => {  
+ 
   const processTags = (tagStr: string) => {
     if (!tagStr) return ["แนะนำ"];
     return tagStr
@@ -22,6 +22,18 @@ const RankCard = ({ index, nameTh, nameEn, tag, meaning, isAlreadyLiked, onLike 
       .map(t => t.trim())
       .filter(t => t.length > 0);
   };
+
+  const handleLikeClick = (e: React.MouseEvent) => {
+  e.preventDefault();
+  
+  if (!userId) {
+    // 🚀 ถ้าไม่ Login ก็สั่งเปลี่ยนหน้าด้วย JS ปกติเลยสัส!
+    window.location.href = '/auth/login'; 
+    return;
+  }
+
+  onLike(); // ✅ ถ้า Login แล้วก็ทำงานปกติ
+};
 
   const tagsArray = processTags(tag);
   const displayTags = tagsArray.join(" / ");
@@ -60,7 +72,7 @@ const RankCard = ({ index, nameTh, nameEn, tag, meaning, isAlreadyLiked, onLike 
     {/* 3. ปุ่มหัวใจ อยู่ฝั่งขวาที่เดิม */}
     <div className="shrink-0">
       <button 
-        onClick={(e) => { e.preventDefault(); onLike(); }} 
+       onClick={handleLikeClick}
         className={`w-9 h-9 flex items-center justify-center rounded-full transition-all active:scale-90 shadow-md ${
           isAlreadyLiked ? 'bg-[#FA787C] text-white' : 'bg-[#E5E7EB] text-white'
         }`}

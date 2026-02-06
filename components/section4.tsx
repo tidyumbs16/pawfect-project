@@ -29,7 +29,8 @@ export default function Section4() {
           
           {/* Card 1 */}
           <div className="flex flex-col items-center h-full">
-            <div className="border-2 pt-6 pb-24 border-[#E8A856] rounded-3xl p-20 h-full flex flex-col items-center text-center shadow-xl/100 shadow-[#D3893A] bg-white w-full relative z-10">
+            <div className="border-2 pt-6 pb-24 border-[#E8A856] rounded-3xl p-20 h-full flex flex-col items-center text-center transition shadow-[1px_5px_4px_] shadow-[#D3893A]/80
+  bg-white w-full relative z-10">
               <h3 className="text-[108%] font-bold text-[#425B80] mb-20 ">
                 ชื่อ 1-2 พยางค์ดีที่สุด
               </h3>
@@ -45,7 +46,7 @@ export default function Section4() {
 
           {/* Card 2 */}
           <div className="flex flex-col items-center h-full">
-            <div className="border-2 border-[#E8A856] pt-6 pb-24 rounded-3xl p-20 h-full flex flex-col items-center text-center shadow-xl/100 shadow-[#D3893A] bg-white w-full relative z-10">
+            <div className="border-2 border-[#E8A856] pt-6 pb-24 rounded-3xl p-20 h-full flex flex-col items-center text-center shadow-[1px_5px_4px_] shadow-[#D3893A]/80 bg-white w-full relative z-10">
               <h3 className="text-[108%] font-bold text-[#425B80] mb-13">
                 เสียงพยัญชนะช่วยจดจำ
               </h3>
@@ -61,7 +62,7 @@ export default function Section4() {
 
           {/* Card 3 */}
           <div className="flex flex-col items-center h-full">
-            <div className="border-2 border-[#E8A856] pt-6 pb-24 rounded-3xl p-20 h-full flex flex-col items-center text-center shadow-xl/100 shadow-[#D3893A] bg-white w-full relative z-10">
+            <div className="border-2 border-[#E8A856] pt-6 pb-24 rounded-3xl p-20 h-full flex flex-col items-center text-center shadow-[1px_5px_4px_] shadow-[#D3893A]/80 bg-white w-full relative z-10">
               <h3 className="text-[108%] font-bold text-[#425B80] mb-13 ">
                 ชื่อคือกุญแจสู่ความผูกพัน
               </h3>

@@ -58,28 +58,20 @@ const PawfectHero = () => {
   };
 
   return (
-    <div className="relative w-full h-[650px] md:h-[906px]">
-      <Image
-        src="/Frame 54.png"
-        alt="Hero"
-        fill
-        priority
-        className="
-          object-cover 
-          object-center 
-          w-auto 
-          h-auto 
-          -z-10
-          absolute 
-          inset-0 
-          scale-[1.26]
-          /* เพิ่มการขยายภาพ */
-        "
-      />
-      
-     
-
-    </div>
+    <div className="relative w-full h-[650px] md:h-[906px] -mt-27 z-[-1]">
+  <Image
+    src="/dogmain2.png"
+    alt="Hero"
+    fill
+    priority
+    className="
+      object-contain  /* ✅ ปรับเป็น contain เพื่อให้เห็นรูปครบทั้งใบ ไม่โดนตัดขอบ */
+      -z-10
+      absolute 
+      inset-0 
+    "
+  />
+</div>
   );
 };
 

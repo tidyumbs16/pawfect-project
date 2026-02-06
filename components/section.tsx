@@ -39,7 +39,7 @@ export default function Sections() {
 
   return (
     // เปลี่ยนจาก font-sans เป็น mallanna.className
-    <div className={`${mallanna.className} w-full flex flex-col items-center pb-24 px-6 mt-30`}>
+    <div className={`${mallanna.className} w-full flex flex-col items-center pb-24 px-6 -mt-15`}>
       {/* TITLE */}
       <h1 className="text-3xl font-bold text-[#425B80] text-center mt-12">
         “เลือกชื่อที่ ใช่ ให้สัตว์เลี้ยงของคุณ”
