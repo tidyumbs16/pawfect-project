@@ -4,7 +4,7 @@ import { Bot, Heart, ImageIcon, Send, Smile, X } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import EmojiPicker, { EmojiClickData } from "emoji-picker-react";
-import { createBrowserClient } from "@/lib/supabase-client";
+
 import { Lexend } from "next/font/google";
 
 const lexend = Lexend({
@@ -59,16 +59,41 @@ interface PetNameSuggestion {
 
 const extractTagsFromUserMessage = (userMessage: string): string => {
   const styleKeywords = [
-    "เท่", "น่ารัก", "ขรึม", "แข็งแกร่ง", "น่าเกรงขาม", "สง่า", "ดุดัน",
-    "ซน", "ซุกซน", "ร่าเริง", "สดใส", "เฉียบขาด", "กล้าหาญ", "อ่อนโยน",
-    "เรียบหรู", "ทันสมัย", "คลาสสิค", "ไทยๆ", "ญี่ปุ่น", "เกาหลี", "จีน",
-    "ขี้อ้อน", "น่ากอด", "แสบ", "ดุร้าย", "cool", "cute", "strong", "fierce"
+    "เท่",
+    "น่ารัก",
+    "ขรึม",
+    "แข็งแกร่ง",
+    "น่าเกรงขาม",
+    "สง่า",
+    "ดุดัน",
+    "ซน",
+    "ซุกซน",
+    "ร่าเริง",
+    "สดใส",
+    "เฉียบขาด",
+    "กล้าหาญ",
+    "อ่อนโยน",
+    "เรียบหรู",
+    "ทันสมัย",
+    "คลาสสิค",
+    "ไทยๆ",
+    "ญี่ปุ่น",
+    "เกาหลี",
+    "จีน",
+    "ขี้อ้อน",
+    "น่ากอด",
+    "แสบ",
+    "ดุร้าย",
+    "cool",
+    "cute",
+    "strong",
+    "fierce",
   ];
 
   const foundTags: string[] = [];
   const lowerMessage = userMessage.toLowerCase();
 
-  styleKeywords.forEach(keyword => {
+  styleKeywords.forEach((keyword) => {
     if (lowerMessage.includes(keyword.toLowerCase())) {
       foundTags.push(keyword);
     }
@@ -79,13 +104,13 @@ const extractTagsFromUserMessage = (userMessage: string): string => {
 
 const parseAIResponse = (
   text: string | undefined,
-  userMessage: string = ""
+  userMessage: string = "",
 ): IPetNameSuggestion[] => {
   if (!text) return [];
-  
+
   console.log("🔍 AI Response:", text);
   console.log("👤 User Message:", userMessage);
-  
+
   const suggestions: IPetNameSuggestion[] = [];
   const lines = text.split("\n");
 
@@ -99,8 +124,12 @@ const parseAIResponse = (
     let match;
 
     // ✅ กรณีที่ 1: มีชื่อไทยในวงเล็บ **Name (ชื่อไทย):** ความหมาย
-    match = line.trim().match(/^[\d*\-•]*[\.\)]*\s*\*\*([^*\(]+?)\s*\(([^\)]+?)\)\*\*[\s]*[:\-–—]+\s*(.+)/);
-    
+    match = line
+      .trim()
+      .match(
+        /^[\d*\-•]*[\.\)]*\s*\*\*([^*\(]+?)\s*\(([^\)]+?)\)\*\*[\s]*[:\-–—]+\s*(.+)/,
+      );
+
     if (match) {
       const name1 = match[1].trim();
       const name2 = match[2].trim();
@@ -129,8 +158,10 @@ const parseAIResponse = (
       console.log(`✅ Format with () matched: "${name1}" + "${name2}"`);
     } else {
       // ✅ กรณีที่ 2: ไม่มีวงเล็บ **Name:** ความหมาย
-      match = line.trim().match(/^[\d*\-•]*[\.\)]*\s*\*\*([^*:]+?)\*\*[\s]*[:\-–—]+\s*(.+)/);
-      
+      match = line
+        .trim()
+        .match(/^[\d*\-•]*[\.\)]*\s*\*\*([^*:]+?)\*\*[\s]*[:\-–—]+\s*(.+)/);
+
       if (match) {
         const name = match[1].trim();
         const meaningText = match[2].trim();
@@ -158,17 +189,46 @@ const parseAIResponse = (
       console.log(`📝 meaning: "${meaning}"`);
 
       const medicalKeywords = [
-        "งดอาหาร", "สังเกตอาการ", "หาหมอ", "รักษา", "ฉุกเฉิน", "แพทย์", 
-        "ป่วย", "ยา", "วัคซีน", "ผ่าตัด", "ติดเชื้อ", "สุขภาพ", "อาการ", 
-        "วินิจฉัย", "วางยา", "ห้องฉุกเฉิน", "ตรวจเลือด", "แผล", "พยาบาล", 
-        "การดูแล", "การรักษา", "ขอปรึกษา", "มีไข้", "เจ็บป่วย", 
-        "ปวดท้อง", "อาเจียน", "ท้องเสีย", "ซึมเศร้า", "เบื่ออาหาร", 
-        "หายใจลำบาก", "แพ้ยา", "บาดเจ็บ", "คำแนะนำ", "ควร", "ไม่ควร"
+        "งดอาหาร",
+        "สังเกตอาการ",
+        "หาหมอ",
+        "รักษา",
+        "ฉุกเฉิน",
+        "แพทย์",
+        "ป่วย",
+        "ยา",
+        "วัคซีน",
+        "ผ่าตัด",
+        "ติดเชื้อ",
+        "สุขภาพ",
+        "อาการ",
+        "วินิจฉัย",
+        "วางยา",
+        "ห้องฉุกเฉิน",
+        "ตรวจเลือด",
+        "แผล",
+        "พยาบาล",
+        "การดูแล",
+        "การรักษา",
+        "ขอปรึกษา",
+        "มีไข้",
+        "เจ็บป่วย",
+        "ปวดท้อง",
+        "อาเจียน",
+        "ท้องเสีย",
+        "ซึมเศร้า",
+        "เบื่ออาหาร",
+        "หายใจลำบาก",
+        "แพ้ยา",
+        "บาดเจ็บ",
+        "คำแนะนำ",
+        "ควร",
+        "ไม่ควร",
       ];
-      
+
       const checkText = `${line} ${meaning}`.toLowerCase();
-      const isMedical = medicalKeywords.some(word => 
-        checkText.includes(word.toLowerCase())
+      const isMedical = medicalKeywords.some((word) =>
+        checkText.includes(word.toLowerCase()),
       );
 
       if (!isMedical) {
@@ -178,7 +238,9 @@ const parseAIResponse = (
           tag: userTags,
           meaning: meaning,
         });
-        console.log(`✅ Added: ${nameTh || nameEn} (${nameEn || nameTh}) - Tag: ${userTags}`);
+        console.log(
+          `✅ Added: ${nameTh || nameEn} (${nameEn || nameTh}) - Tag: ${userTags}`,
+        );
       } else {
         console.log(`❌ Skipped - Medical: ${isMedical}`);
       }
@@ -500,25 +562,23 @@ export default function ChatbotUI() {
         }),
       });
 
-      
-// ✅ ในส่วนสุดท้ายของ handleSend แก้เหลือแค่นี้พอ:
-const data = await res.json();
-const aiText = data?.text || "";
+      // ✅ ในส่วนสุดท้ายของ handleSend แก้เหลือแค่นี้พอ:
+      const data = await res.json();
+      const aiText = data?.text || "";
 
-// แงะชื่อออกมาเลย
- const suggestions = parseAIResponse(aiText, textToSend);
-const hasNames = suggestions.length > 0;
+      // แงะชื่อออกมาเลย
+      const suggestions = parseAIResponse(aiText, textToSend);
+      const hasNames = suggestions.length > 0;
 
-setMessages((prev) => [
-  ...prev,
-  {
-    role: "model",
-    text: aiText,
-    // ✅ แค่แงะเจอชื่อ (hasNames) ก็โชว์การ์ดเลย ไม่ต้องไปดักคำถามซ้อนให้งงสัส!
-    suggestions: hasNames ? suggestions : undefined,
-  },
-]);
-
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "model",
+          text: aiText,
+          // ✅ แค่แงะเจอชื่อ (hasNames) ก็โชว์การ์ดเลย ไม่ต้องไปดักคำถามซ้อนให้งงสัส!
+          suggestions: hasNames ? suggestions : undefined,
+        },
+      ]);
 
       setHistory((prev) => [
         ...prev,
@@ -648,96 +708,99 @@ setMessages((prev) => [
             <div className="w-screen ml-[calc(50%-50vw)] border-b border-slate-200 mt-4"></div>
           </div>
 
-        <div className="px-6 py-6 space-y-10">
-  {messages.length === 0 && (
-    <div className="flex items-center justify-center h-64 text-slate-400">
-      Start a conversation now, or select a quick command below
-    </div>
-  )}
-  
-  {messages.map((msg, idx) => {
-    // 🔍 เช็คว่าข้อความนี้เป็นการแนะนำชื่อหรือไม่
-    const hasSuggestions = msg.suggestions && msg.suggestions.length > 0;
-    const isModel = msg.role === "model";
-
-    return (
-      <div
-        key={idx}
-        className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}
-      >
-        <div
-          className={`flex items-end gap-3 max-w-[90%] ${
-            msg.role === "user" ? "flex-row-reverse" : ""
-          }`}
-        >
-          {/* --- 1. Avatar Section --- */}
-          <div
-            className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 shadow-md ${
-              isModel ? "bg-[#00A9FF]" : "bg-white"
-            }`}
-          >
-            {isModel ? (
-              <Bot size={24} className="text-white" />
-            ) : (
-              <img
-                src={profile?.avatar_url || "/avatardefault.png"}
-                className="w-11 h-11 rounded-full object-cover"
-              />
-            )}
-          </div>
-
-          {/* --- 2. Content Section --- */}
-          <div className="relative flex flex-col gap-3">
-            
-            {/* 🟢 กรณีที่ 1: ข้อความฝั่ง User หรือ ข้อความ Model ที่ "ไม่ใช่" การแนะนำชื่อ (โชว์ Bubble ปกติ) */}
-            {(msg.role === "user" || !hasSuggestions) && (
-              <div
-                className={`p-4 rounded-3xl text-[15px] shadow-sm ${
-                  msg.role === "user"
-                    ? "bg-white text-slate-600 border border-slate-100 rounded-br-none"
-                    : "bg-[#00A9FF] text-white rounded-bl-none"
-                }`}
-              >
-                {msg.image && (
-                  <img
-                    src={msg.image}
-                    className="rounded-2xl mb-3 max-w-xs border-2 border-white"
-                  />
-                )}
-                <div className="whitespace-pre-wrap">{msg.text}</div>
+          <div className="px-6 py-6 space-y-10">
+            {messages.length === 0 && (
+              <div className="flex items-center justify-center h-64 text-slate-400">
+                Start a conversation now, or select a quick command below
               </div>
             )}
 
-            {/* 🟠 กรณีที่ 2: ข้อความฝั่ง Model ที่ "มี" suggestions (โชว์ Name Cards) */}
-            {isModel && msg.suggestions && msg.suggestions.length > 0 && (
-  <div className="flex flex-col gap-4">
-    <p className="text-[14px] font-black text-[#4A628A] ml-2 animate-pulse">
-      ✨ ฉันคัดชื่อสุดพิเศษมาให้แล้ว:
-    </p>
-    
-    <div className="flex gap-4 overflow-x-auto no-scrollbar py-2 px-2 -mx-2">
-      {/* ใช้วิธีเช็คก่อนว่ามี suggestions ถึงจะทำการ map */}
-      {msg.suggestions.map((s: IPetNameSuggestion, i: number) => (
-        <div key={i} className="shrink-0">
-          <NameCard
-            nameTh={s.nameTh}
-            nameEn={s.nameEn}
-            meaning={s.meaning}
-            tag={s.tag}
-            isAlreadyLiked={likedNames.has(s.nameTh)}
-            onLike={() => toggleFavorite(s)}
-          />
-        </div>
-      ))}
-    </div>
-  </div>
-)}
+            {messages.map((msg, idx) => {
+              // 🔍 เช็คว่าข้อความนี้เป็นการแนะนำชื่อหรือไม่
+              const hasSuggestions =
+                msg.suggestions && msg.suggestions.length > 0;
+              const isModel = msg.role === "model";
 
-          </div>
-        </div>
-      </div>
-    );
-  })}
+              return (
+                <div
+                  key={idx}
+                  className={`flex flex-col ${msg.role === "user" ? "items-end" : "items-start"}`}
+                >
+                  <div
+                    className={`flex items-end gap-3 max-w-[90%] ${
+                      msg.role === "user" ? "flex-row-reverse" : ""
+                    }`}
+                  >
+                    {/* --- 1. Avatar Section --- */}
+                    <div
+                      className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 shadow-md ${
+                        isModel ? "bg-[#00A9FF]" : "bg-white"
+                      }`}
+                    >
+                      {isModel ? (
+                        <Bot size={24} className="text-white" />
+                      ) : (
+                        <img
+                          src={profile?.avatar_url || "/avatardefault.png"}
+                          className="w-11 h-11 rounded-full object-cover"
+                        />
+                      )}
+                    </div>
+
+                    {/* --- 2. Content Section --- */}
+                    <div className="relative flex flex-col gap-3">
+                      {/* 🟢 กรณีที่ 1: ข้อความฝั่ง User หรือ ข้อความ Model ที่ "ไม่ใช่" การแนะนำชื่อ (โชว์ Bubble ปกติ) */}
+                      {(msg.role === "user" || !hasSuggestions) && (
+                        <div
+                          className={`p-4 rounded-3xl text-[15px] shadow-sm ${
+                            msg.role === "user"
+                              ? "bg-white text-slate-600 border border-slate-100 rounded-br-none"
+                              : "bg-[#00A9FF] text-white rounded-bl-none"
+                          }`}
+                        >
+                          {msg.image && (
+                            <img
+                              src={msg.image}
+                              className="rounded-2xl mb-3 max-w-xs border-2 border-white"
+                            />
+                          )}
+                          <div className="whitespace-pre-wrap">{msg.text}</div>
+                        </div>
+                      )}
+
+                      {/* 🟠 กรณีที่ 2: ข้อความฝั่ง Model ที่ "มี" suggestions (โชว์ Name Cards) */}
+                      {isModel &&
+                        msg.suggestions &&
+                        msg.suggestions.length > 0 && (
+                          <div className="flex flex-col gap-4">
+                            <p className="text-[14px] font-black text-[#4A628A] ml-2 animate-pulse">
+                              ✨ ฉันคัดชื่อสุดพิเศษมาให้แล้ว:
+                            </p>
+
+                            <div className="flex gap-4 overflow-x-auto no-scrollbar py-2 px-2 -mx-2">
+                              {/* ใช้วิธีเช็คก่อนว่ามี suggestions ถึงจะทำการ map */}
+                              {msg.suggestions.map(
+                                (s: IPetNameSuggestion, i: number) => (
+                                  <div key={i} className="shrink-0">
+                                    <NameCard
+                                      nameTh={s.nameTh}
+                                      nameEn={s.nameEn}
+                                      meaning={s.meaning}
+                                      tag={s.tag}
+                                      isAlreadyLiked={likedNames.has(s.nameTh)}
+                                      onLike={() => toggleFavorite(s)}
+                                    />
+                                  </div>
+                                ),
+                              )}
+                            </div>
+                          </div>
+                        )}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
             {loading && (
               <div className="flex items-center gap-3">
                 <span className="w-2 h-2 bg-[#00A9FF] rounded-full animate-bounce"></span>
@@ -756,7 +819,7 @@ setMessages((prev) => [
             <div className="flex items-center gap-2 mb-10">
               <span className="text-orange-400 text-xl">✨</span>
               <input
-                className="w-full bg-transparent outline-none text-slate-950"
+                className="w-full bg-transparent outline-none text-[#425B80]"
                 placeholder="Ask AI a question..."
                 value={inputText}
                 onChange={(e) => setInputText(e.target.value)}
