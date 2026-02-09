@@ -167,7 +167,7 @@ export default function PopularPage() {
     const itemTags = item.tag.split(/[,\/\s|]+/).map(t => t.trim());
     if (activeTab === "น่ารัก / น่ากอด") return itemTags.some(t => t === "น่ารัก" || t === "น่ากอด");
     if (activeTab === "เท่ / เจ๋ง") return itemTags.some(t => t === "เท่" || t === "เจ๋ง");
-    if (activeTab === "ความหมายดี") return itemTags.includes("มีความหมายดี");
+    if (activeTab === "ความหมายดี") return itemTags.includes("ความหมายดี");
     if (activeTab === "ชื่อสั้นจําง่าย") return itemTags.includes("ชื่อสั้นจําง่าย");
     if (activeTab === "อื่นๆ") {
       const mainTags = ["น่ารัก", "น่ากอด", "เท่", "เจ๋ง", "มีความหมายดี", "ชื่อสั้นจําง่าย"];

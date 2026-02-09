@@ -11,6 +11,7 @@ import { Lemon } from 'next/font/google';
 import Image from "next/image";
 import { Lexend } from "next/font/google";
 import { motion, AnimatePresence } from "framer-motion";
+import { usePathname } from 'next/navigation';
 
 const lemon = Lemon({ 
   weight: '400', 
@@ -80,6 +81,9 @@ export default function Navbar() {
   const [activeTab, setActiveTab] = useState<"today" | "upcoming" | "past">(
     "today"
   );
+
+const pathname = usePathname(); // ✅ 2. ช้งาน pathname
+  const isHome = pathname === "/"; // เช็คว่าเป็นหน้า Home หรือไม่
 
   const {
     notifications,
@@ -190,7 +194,13 @@ export default function Navbar() {
 
   return (
     <>
-      <nav className="bg-[#F67F00] text-white w-full py-4 px-2 shadow-md z-50">
+<nav className={`
+        text-white w-full py-4 px-2 shadow-md z-50 transition-all duration-300
+        ${isHome 
+          ? "fixed top-0 bg-[#F67F00]/90 backdrop-blur-md" // หน้า Home: เลื่อนตาม + โปร่งแสงนิดๆ
+          : "relative bg-[#F67F00]" // หน้าอื่นๆ: อยู่กับที่ + สีทึบปกติ
+        }
+      `}>
         <div className="flex items-center justify-between pl-10 pr-12">
           {/* LEFT */}
           <div className="flex items-center">

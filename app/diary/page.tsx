@@ -1501,7 +1501,7 @@ ${
                   value={petName}
                   onChange={(e) => setPetName(e.target.value)}
                   placeholder="Please Enter Pet Nickname"
-                  className="w-full bg-gray-100 border-none rounded-xl px-4 py-3 text-gray-400 focus:none outline-none placeholder:text-gray-400 transition-all text-[#425B80] "
+                  className="w-full bg-gray-100 border-none rounded-xl px-4 py-3 text-gray-400 focus:none outline-none  transition-all text-[#425B80] "
                 />
               </div>
 
