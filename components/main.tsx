@@ -58,7 +58,7 @@ const PawfectHero = () => {
   };
 
   return (
-    <div className="relative w-full h-[650px] md:h-[906px] -mt-27 z-0">
+    <div className="relative w-full h-[650px] md:h-[906px] -mt-9 z-0">
   <Image
     src="/dogmain2.png"
     alt="Hero"
