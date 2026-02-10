@@ -246,7 +246,7 @@ const AuthForm = () => {
   };
 
   return (
-  <div className={`flex items-center justify-center mt-10 ${lexend.className}`}>
+  <div className={`flex items-center justify-center mt-25 ${lexend.className}`}>
       <div className="w-full max-w-md p-10 pt-8 bg-gradient-to-b from-[#FFC23B] to-[#EE9106] rounded-[2rem] shadow-xl min-h-[560px] flex flex-col justify-start relative overflow-hidden transition-all duration-300">
         {/* HEAD */}
         <div className="text-center mb-6 z-10">
