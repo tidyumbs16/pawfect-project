@@ -179,7 +179,7 @@ export default function PopularPage() {
   if (loading) return <div className="min-h-screen flex items-center justify-center ">กำลังโหลดอันดับชื่อ...</div>;
 
   return (
-    <div className={`${lexend.className} min-h-screen w-full bg-[#F8FAFC] py-12  flex flex-col items-center`}>
+    <div className={`${lexend.className} min-h-screen w-full bg-[#F8FAFC] py-12  flex flex-col items-center mt-20`}>
   <h1 className="text-4xl font-bold text-[#4A628A] mb-3">ชื่อสัตว์เลี้ยงยอดนิยม</h1>
   <h2 className=" text-[17px] text-[#4A628A] mb-8 font-normal">ชื่อที่ไ่ด้รับความนิยมสูงสุด</h2>
   

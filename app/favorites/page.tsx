@@ -111,7 +111,7 @@ export default function FavoritesPage() {
   if (loading) return <div className="min-h-screen flex items-center justify-center">กำลังโหลด...</div>;
 
   return (
-    <div className={`min-h-screen bg-[#F8FAFC] py-12 px-4 flex flex-col items-center ${lexend.className}`}>
+    <div className={`min-h-screen bg-[#F8FAFC] py-12 px-4 flex flex-col items-center mt-16 ${lexend.className}`}>
       <h1 className="text-4xl font-black text-[#4A628A] mb-3  ">Favorites</h1>
       <h2 className="text-lg text-[#4A628A] mb-8">ชื่อโปรดของคุณ</h2>
 

@@ -668,7 +668,7 @@ export default function ChatbotUI() {
 
   return (
     <div
-      className={`${lexend.className} min-h-screen bg-[#F8FAFC] flex flex-col items-center py-10 px-0 font-sans`}
+      className={`${lexend.className} min-h-screen bg-[#F8FAFC] flex flex-col items-center py-10 px-0 font-sans mt-16`}
     >
       <div className="w-full max-w-5xl mx-auto px-4 md:px-0">
         <div className="text-center mb-8">

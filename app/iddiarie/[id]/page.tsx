@@ -151,7 +151,7 @@ const handleRemoveExistingImage = (url: string) => {
   if (!diary) return <div className="p-10 text-center">ไม่พบข้อมูล</div>;
 
   return (
- <div className={`flex items-center justify-center min-h-screen py-8 ${lexend.className}`}>
+ <div className={`flex items-center justify-center min-h-screen py-8 mt-16 ${lexend.className}`}>
       {!showEditForm ? (
         /* ✅ โหมดแสดงผล (View Mode) */
         <div className="relative bg-white rounded-[1.5rem] shadow-lgtransition shadow-[1px_5px_4px_] shadow-[#9C9C9C]/80 p-10 md:p-12 space-y-8 w-full max-w-5xl mx-auto">

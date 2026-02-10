@@ -758,10 +758,10 @@ const checkPetBeforeAction = (actionCallback: () => void): void => {
   }
 };
  return (
-    <div className={`${lexend.className} min-h-screen bg-gray-50 flex flex-col relative select-none`}>
+    <div className={`${lexend.className} min-h-screen bg-gray-50 flex flex-col relative select-none mt-16`}>
       {/* HEADER */}
       <header className="pt-10 pb-6 text-center px-4">
-        <h1 className="text-3xl font-extrabold text-slate-700 uppercase tracking-wider">
+        <h1 className="text-3xl font-extrabold text-[#425B80] uppercase tracking-wider">
           My Diary
         </h1>
         <p className="text-slate-500 text-sm mt-2">

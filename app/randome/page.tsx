@@ -121,7 +121,7 @@ export default function PetNameGenerator() {
   };
 
   return (
-    <div className={`min-h-screen bg-[#FDFDFD] py-12 px-4 text-[#4A628A] ${lexend.className}`}>
+    <div className={`min-h-screen bg-[#FDFDFD] py-12 px-4 text-[#4A628A] mt-15 ${lexend.className}`}>
       <div className="text-center mb-12">
         <h1 className="text-3xl md:text-4xl font-black mb-3">
           สุ่มชื่อสัตว์เลี้ยงด้วย AI

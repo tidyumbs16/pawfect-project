@@ -74,7 +74,7 @@ export default function ProfilePage() {
 
   return (
     // แทรก lexend.className เข้าไปใน Container หลัก
-    <div className={`${lexend.className} min-h-screen bg-[#FDFDFD] flex flex-col md:flex-row justify-center items-start gap-10 pt-32 px-4 pb-10 mt-35 `}>
+    <div className={`${lexend.className} min-h-screen bg-[#FDFDFD] flex flex-col md:flex-row justify-center items-start gap-10 pt-32 px-4 pb-10 mt-45 `}>
       
       {/* --- LEFT CARD: PROFILE VIEW --- */}
       <div className="relative bg-white transition shadow-[1px_5px_4px_] shadow-[#9C9C9C]/80  rounded-sm w-full max-w-[400px] p-8 pt-24 flex flex-col items-center ">
