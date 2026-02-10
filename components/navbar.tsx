@@ -194,13 +194,7 @@ const pathname = usePathname(); // ✅ 2. ช้งาน pathname
 
   return (
     <>
-<nav className={`
-        text-white w-full py-4 px-2 shadow-md z-50 transition-all duration-300
-        ${isHome 
-          ? "fixed top-0 bg-[#F67F00]/90 backdrop-blur-md" // หน้า Home: เลื่อนตาม + โปร่งแสงนิดๆ
-          : "relative bg-[#F67F00]" // หน้าอื่นๆ: อยู่กับที่ + สีทึบปกติ
-        }
-      `}>
+<nav className="fixed top-0 left-0 w-full bg-[#F67F00] text-white py-4 px-2 shadow-md z-[100]">
         <div className="flex items-center justify-between pl-10 pr-12">
           {/* LEFT */}
           <div className="flex items-center">
@@ -235,7 +229,7 @@ const pathname = usePathname(); // ✅ 2. ช้งาน pathname
                 </Link>
               </li>
               <li>
-                <Link href="#section5" className="hover:text-gray-200">
+                <Link href="/#section5" className="hover:text-gray-200">
                              <span className="text-[16px]">Contact Us</span>
 
                 </Link>
