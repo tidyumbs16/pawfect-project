@@ -87,9 +87,33 @@ export default function EditPanel({ profile, setShowEdit,  setProfile, selectedF
   // ฟังก์ชันเปลี่ยนค่า Text Input
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-  };
+    
+   if (name === "birthdate") {
+    const selectedDate = new Date(value);
+    const today = new Date();
+    
+    // ตั้งเวลาวันนี้เป็น 00:00:00 เพื่อเช็คแค่วันที่
+    today.setHours(0, 0, 0, 0);
 
+    // 1. ป้องกันวันในอนาคต หรือปีปัจจุบัน
+    if (selectedDate > today) {
+      alert("ไม่สามารถเลือกวันเกิดเป็นอนาคตได้ครับ");
+      return; // ⛔ ไม่ยอมให้ลง State
+    }
+
+    if (selectedDate.getFullYear() === today.getFullYear()) {
+      alert("วันเกิดต้องไม่ใช่ปีปัจจุบันครับ");
+      return; // ⛔ ไม่ยอมให้ลง State
+    }
+  }
+
+  // ✅ ถ้าผ่านการเช็ค (หรือเป็น Field อื่น) ให้ set ตามปกติ
+  setFormData((prev) => ({ ...prev, [name]: value }));
+};
+
+
+
+  
   // ฟังก์ชันเปลี่ยนค่า Gender (แยกออกมาให้ชัดเจน)
   const handleGenderChange = (val: string) => {
     setFormData((prev) => ({ ...prev, gender: val }));
@@ -201,16 +225,18 @@ export default function EditPanel({ profile, setShowEdit,  setProfile, selectedF
         </div>
 
         {/* Birthdate */}
-        <div className="grid grid-cols-1 md:grid-cols-[180px_1fr] items-center gap-4">
-          <label className={labelBaseClass}>วัน/เดือน/ปี เกิด :</label>
-          <input
-            type="date"
-            name="birthdate"
-            value={formData.birthdate}
-            onChange={handleChange}
-            className={inputBaseClass}
-          />
-        </div>
+       <div className="grid grid-cols-1 md:grid-cols-[180px_1fr] items-center gap-4">
+  <label className={labelBaseClass}>วัน/เดือน/ปี เกิด :</label>
+  <input
+    type="date"
+    name="birthdate"
+    // ✅ จำกัดปฏิทินให้เลือกได้สูงสุดแค่สิ้นปีที่แล้ว
+    max={`${new Date().getFullYear() - 1}-12-31`} 
+    value={formData.birthdate}
+    onChange={handleChange}
+    className={inputBaseClass}
+  />
+</div>
 
         {/* Bio */}
         <div className="grid grid-cols-1 md:grid-cols-[180px_1fr] items-start gap-4">
